@@ -124,7 +124,7 @@ export function normalizeSchool(raw: unknown): School {
     city: cityName,
     citySlug: typeof city === "object" ? city?.slug ?? slugify(cityName) : school.citySlug ?? slugify(cityName),
     state: stateName ?? address.state ?? "Uttar Pradesh",
-    board: boardName as School["board"],
+    board: boardName,
     type: school.type ?? "Co-ed",
     format: school.format ?? (facilities.includes("Hostel") ? "Boarding" : "Day"),
     medium: school.medium ?? "English",

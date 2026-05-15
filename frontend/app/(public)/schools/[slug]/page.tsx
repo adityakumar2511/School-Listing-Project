@@ -19,7 +19,7 @@ import { SchoolInquiryCta } from "@/components/schools/school-inquiry-cta";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { schools as mockSchools, targetCities, type School } from "@/data/schools";
-import { fetchSchoolsList } from "@/lib/schools-api";
+import { fetchSchoolBySlug, fetchSchoolsList, normalizeSchool } from "@/lib/schools-api";
 import { formatCurrency } from "@/lib/utils";
 
 type DetailProps = {
@@ -85,82 +85,36 @@ function normalizeFacilities(rawFacilities: unknown): string[] {
   return [];
 }
 
-function normalizeSchool(raw: unknown): SchoolProfile {
-  const school = raw as Record<string, any>;
-  const city = school.city;
-  const board = school.board;
-  const details = school.details ?? {};
-  const address = school.address ?? {};
-  const academics = school.academics ?? {};
-  const fees = school.fees ?? {};
+function toSchoolProfile(raw: unknown): SchoolProfile {
+  const base = normalizeSchool(raw);
+  const school = raw as Record<string, unknown>;
+  const details = (school.details ?? {}) as Record<string, unknown>;
   const gallery = Array.isArray(school.gallery) ? school.gallery : [];
-  const cityName = typeof city === "string" ? city : city?.name ?? address.city ?? "Unknown city";
-  const stateName = typeof city === "object" ? city?.state?.name : school.state;
-  const boardName = typeof board === "string" ? board : board?.name ?? "CBSE";
-  const facilities = normalizeFacilities(school.facilities);
   const coverImage =
-    school.image ??
-    gallery[0]?.cloudinaryUrl ??
+    base.image ??
+    (gallery[0] as { cloudinaryUrl?: string } | undefined)?.cloudinaryUrl ??
     "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80";
 
   return {
-    id: String(school.id),
-    name: String(school.name),
-    slug: String(school.slug),
-    city: cityName,
-    citySlug: typeof city === "object" ? city?.slug ?? slugify(cityName) : school.citySlug ?? slugify(cityName),
-    state: stateName ?? address.state ?? "Uttar Pradesh",
-    board: boardName as School["board"],
-    type: school.type ?? "Co-ed",
-    format: school.format ?? (facilities.includes("Hostel") ? "Boarding" : "Day"),
-    medium: school.medium ?? "English",
-    description: school.description ?? "",
-    logo: school.logo ?? "/school-logo.svg",
+    ...base,
     image: coverImage,
-    phone: details.phone ?? school.phone ?? "",
-    whatsapp: details.whatsapp ?? school.whatsapp ?? "",
-    address: address.addressLine ?? school.address ?? cityName,
-    establishedYear: details.establishedYear ?? school.establishedYear ?? 0,
-    affiliationNo: details.affiliationNo ?? school.affiliationNo ?? "N/A",
-    classes:
-      school.classes ??
-      (academics.classesFrom && academics.classesTo ? `${academics.classesFrom} - ${academics.classesTo}` : "N/A"),
-    admissionOpen: academics.admissionOpen ?? school.admissionOpen ?? false,
-    isFeatured: school.isFeatured ?? false,
-    monthlyFee: fees.tuitionFeeMonthly ?? school.monthlyFee ?? 0,
-    annualFee: fees.tuitionFeeAnnual ?? school.annualFee ?? 0,
-    facilities,
-    categories: school.categories ?? [],
-    lat: address.lat ?? school.lat ?? 0,
-    lng: address.lng ?? school.lng ?? 0,
-    principalName: details.principalName,
-    galleryImages: gallery.length > 0 ? gallery.map((item: { cloudinaryUrl: string }) => item.cloudinaryUrl) : [coverImage],
-    boardsOffered: [boardName]
+    principalName: typeof details.principalName === "string" ? details.principalName : undefined,
+    galleryImages:
+      gallery.length > 0
+        ? gallery.map((item) => String((item as { cloudinaryUrl: string }).cloudinaryUrl))
+        : [coverImage],
+    boardsOffered: [base.board]
   };
 }
 
 async function getSchoolBySlug(slug: string): Promise<SchoolProfile | null> {
-  if (API_URL) {
-    try {
-      const response = await fetch(`${API_URL}/api/schools/${slug}`, {
-        next: {
-          revalidate: 3600
-        }
-      });
-
-      if (response.ok) {
-        const payload = (await response.json()) as { data?: unknown };
-        if (payload.data) {
-          return normalizeSchool(payload.data);
-        }
-      }
-    } catch {
-      // Fall through to mock data for local development.
-    }
+  const fromApi = await fetchSchoolBySlug(slug);
+  if (fromApi) {
+    return toSchoolProfile(fromApi.raw ?? fromApi);
   }
 
   const school = mockSchools.find((item) => item.slug === slug);
-  return school ? normalizeSchool(school) : null;
+  return school ? toSchoolProfile(school) : null;
 }
 
 async function getSchoolsByCity(citySlug: string): Promise<SchoolProfile[]> {
@@ -174,14 +128,14 @@ async function getSchoolsByCity(citySlug: string): Promise<SchoolProfile[]> {
 
       if (response.ok) {
         const payload = (await response.json()) as { data?: unknown[] };
-        return (payload.data ?? []).map(normalizeSchool);
+        return (payload.data ?? []).map(toSchoolProfile);
       }
     } catch {
       // Fall through to mock data for local development.
     }
   }
 
-  return mockSchools.filter((school) => school.citySlug === citySlug).map(normalizeSchool);
+  return mockSchools.filter((school) => school.citySlug === citySlug).map(toSchoolProfile);
 }
 
 export async function generateStaticParams() {

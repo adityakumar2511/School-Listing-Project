@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { School } from "@/data/schools";
+import { normalizeSchool } from "@/lib/schools-api";
 import { formatCurrency } from "@/lib/utils";
 
 type ChatMessage = {
@@ -24,88 +25,6 @@ type Recommendation = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const AI_RECOMMEND_ENDPOINT = API_URL ? `${API_URL}/api/ai/recommend` : "/api/ai/recommend";
-
-function slugify(value: string) {
-  return value.toLowerCase().trim().replaceAll("_", "-").replaceAll(" ", "-");
-}
-
-function normalizeFacilities(rawFacilities: unknown): string[] {
-  if (Array.isArray(rawFacilities)) {
-    return rawFacilities.map(String);
-  }
-
-  if (rawFacilities && typeof rawFacilities === "object") {
-    const labels: Record<string, string> = {
-      library: "Library",
-      labs: "Labs",
-      hostel: "Hostel",
-      transport: "Transport",
-      smartClassroom: "Smart Classroom",
-      wifi: "WiFi",
-      cctv: "CCTV",
-      gym: "Gym",
-      swimmingPool: "Swimming Pool",
-      playground: "Playground",
-      auditorium: "Auditorium",
-      cafeteria: "Canteen"
-    };
-
-    return Object.entries(rawFacilities as Record<string, unknown>)
-      .filter(([key, value]) => key !== "schoolId" && value === true)
-      .map(([key]) => labels[key] ?? key);
-  }
-
-  return [];
-}
-
-function normalizeSchool(raw: unknown): School {
-  const school = raw as Record<string, any>;
-  const city = school.city;
-  const board = school.board;
-  const details = school.details ?? {};
-  const address = school.address ?? {};
-  const academics = school.academics ?? {};
-  const fees = school.fees ?? {};
-  const gallery = Array.isArray(school.gallery) ? school.gallery : [];
-  const cityName = typeof city === "string" ? city : city?.name ?? address.city ?? "Unknown city";
-  const boardName = typeof board === "string" ? board : board?.name ?? "CBSE";
-  const facilities = normalizeFacilities(school.facilities);
-
-  return {
-    id: String(school.id ?? school.slug ?? school.name),
-    name: String(school.name ?? "Recommended school"),
-    slug: String(school.slug ?? slugify(String(school.name ?? "school"))),
-    city: cityName,
-    citySlug: typeof city === "object" ? city?.slug ?? slugify(cityName) : school.citySlug ?? slugify(cityName),
-    state: typeof city === "object" ? city?.state?.name ?? "Uttar Pradesh" : school.state ?? address.state ?? "Uttar Pradesh",
-    board: boardName as School["board"],
-    type: school.type ?? "Co-ed",
-    format: school.format ?? (facilities.includes("Hostel") ? "Boarding" : "Day"),
-    medium: school.medium ?? "English",
-    description: school.description ?? "",
-    logo: school.logo ?? "/school-logo.svg",
-    image:
-      school.image ??
-      gallery[0]?.cloudinaryUrl ??
-      "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80",
-    phone: details.phone ?? school.phone ?? "",
-    whatsapp: details.whatsapp ?? school.whatsapp ?? "",
-    address: address.addressLine ?? school.address ?? cityName,
-    establishedYear: details.establishedYear ?? school.establishedYear ?? 0,
-    affiliationNo: details.affiliationNo ?? school.affiliationNo ?? "N/A",
-    classes:
-      school.classes ??
-      (academics.classesFrom && academics.classesTo ? `${academics.classesFrom} - ${academics.classesTo}` : "N/A"),
-    admissionOpen: academics.admissionOpen ?? school.admissionOpen ?? true,
-    isFeatured: school.isFeatured ?? false,
-    monthlyFee: fees.tuitionFeeMonthly ?? school.monthlyFee ?? 0,
-    annualFee: fees.tuitionFeeAnnual ?? school.annualFee ?? 0,
-    facilities,
-    categories: school.categories ?? [],
-    lat: address.lat ?? school.lat ?? 0,
-    lng: address.lng ?? school.lng ?? 0
-  };
-}
 
 function extractRecommendations(payload: unknown): Recommendation[] {
   const data = (payload as { data?: unknown })?.data ?? payload;
