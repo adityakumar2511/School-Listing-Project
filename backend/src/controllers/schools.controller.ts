@@ -176,7 +176,7 @@ export const createSchool = asyncHandler(async (request, response) => {
   const slug = await uniqueSchoolSlug(body.name);
   const phoneDigits = body.phone ? last10Digits(body.phone) : "";
 
-  const school = await prisma.$transaction(async (tx) => {
+  const school = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const created = await tx.school.create({
       data: {
         name: body.name,

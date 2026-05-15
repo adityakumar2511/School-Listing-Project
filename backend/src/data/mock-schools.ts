@@ -184,6 +184,8 @@ export async function findSchools(
   return { data, total };
 }
 
+export type SchoolListItem = Awaited<ReturnType<typeof findSchools>>["data"][number];
+
 export function findSchoolBySlug(slug: string) {
   return prisma.school.findFirst({
     where: {

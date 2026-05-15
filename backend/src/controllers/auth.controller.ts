@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { env } from "../config/env.js";
@@ -134,7 +135,7 @@ export const verifyOtp = asyncHandler(async (request, response) => {
     });
   }
 
-  const user = await prisma.$transaction(async (tx) => {
+  const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const updateResult = await tx.otpRecord.updateMany({
       where: {
         id: activeOtp.id,

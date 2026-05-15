@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { env } from "../config/env.js";
-import { findSchools, schoolInclude } from "../data/mock-schools.js";
+import { findSchools, schoolInclude, type SchoolListItem } from "../data/mock-schools.js";
 import { prisma } from "../config/prisma.js";
 
 export class AiService {
@@ -8,7 +8,7 @@ export class AiService {
 
   private async loadSchoolCatalog() {
     const { data } = await findSchools({}, 1, 30);
-    return data.map((school) => ({
+    return data.map((school: SchoolListItem) => ({
       id: school.id,
       name: school.name,
       slug: school.slug,

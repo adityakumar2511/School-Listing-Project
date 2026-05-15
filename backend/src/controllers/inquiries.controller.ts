@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { resendService } from "../services/resend.service.js";
@@ -139,7 +140,7 @@ export const createInquiry = asyncHandler(async (request, response) => {
     throw new HttpError(409, "You have already submitted an inquiry for this school in the last 7 days");
   }
 
-  const inquiry = await prisma.$transaction(async (tx) => {
+  const inquiry = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.user.update({
       where: {
         id: request.user!.id
