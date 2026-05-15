@@ -6,9 +6,9 @@ export type School = {
   citySlug: string;
   state: string;
   board: string;
-  type: "Co-ed" | "Girls" | "Boys";
-  format: "Day" | "Boarding" | "Day-Boarding";
-  medium: "English" | "Hindi" | "English/Hindi";
+  type: string;
+  format: string;
+  medium: string;
   description: string;
   logo: string;
   image: string;

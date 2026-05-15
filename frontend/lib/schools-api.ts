@@ -172,47 +172,65 @@ export type SchoolQueryParams = {
   limit?: number;
 };
 
+const emptyPagination = (limit: number): ApiPagination => ({
+  page: 1,
+  limit,
+  total: 0,
+  totalPages: 0
+});
+
 export async function fetchSchoolsList(params: SchoolQueryParams): Promise<SchoolsListResponse> {
-  const search = new URLSearchParams();
-  if (params.q) search.set("q", params.q);
-  if (params.city) search.set("city", params.city);
-  if (params.board) search.set("board", params.board);
-  if (params.facility) search.set("facility", params.facility);
-  if (params.category) search.set("category", params.category);
-  if (params.featured) search.set("featured", "true");
-  if (params.admissionOpen) search.set("admissionOpen", "true");
-  if (params.sort) search.set("sort", params.sort);
-  search.set("page", String(params.page ?? 1));
-  search.set("limit", String(params.limit ?? 12));
+  const limit = params.limit ?? 12;
 
-  const response = await fetch(`${API_URL}/api/schools?${search.toString()}`);
-  if (!response.ok) {
-    throw new Error(`Schools API returned ${response.status}`);
-  }
+  try {
+    const search = new URLSearchParams();
+    if (params.q) search.set("q", params.q);
+    if (params.city) search.set("city", params.city);
+    if (params.board) search.set("board", params.board);
+    if (params.facility) search.set("facility", params.facility);
+    if (params.category) search.set("category", params.category);
+    if (params.featured) search.set("featured", "true");
+    if (params.admissionOpen) search.set("admissionOpen", "true");
+    if (params.sort) search.set("sort", params.sort);
+    search.set("page", String(params.page ?? 1));
+    search.set("limit", String(limit));
 
-  const payload = (await response.json()) as { data?: unknown[]; pagination?: Partial<ApiPagination> };
-  const total = payload.pagination?.total ?? payload.data?.length ?? 0;
-  const limit = payload.pagination?.limit ?? params.limit ?? 12;
-
-  return {
-    data: (payload.data ?? []).map(normalizeSchool),
-    pagination: {
-      page: payload.pagination?.page ?? params.page ?? 1,
-      limit,
-      total,
-      totalPages: payload.pagination?.totalPages ?? Math.max(1, Math.ceil(total / limit))
+    const response = await fetch(`${API_URL}/api/schools?${search.toString()}`, {
+      next: { revalidate: 60 }
+    });
+    if (!response.ok) {
+      throw new Error(`Schools API returned ${response.status}`);
     }
-  };
+
+    const payload = (await response.json()) as { data?: unknown[]; pagination?: Partial<ApiPagination> };
+    const total = payload.pagination?.total ?? payload.data?.length ?? 0;
+
+    return {
+      data: (payload.data ?? []).map(normalizeSchool),
+      pagination: {
+        page: payload.pagination?.page ?? params.page ?? 1,
+        limit: payload.pagination?.limit ?? limit,
+        total,
+        totalPages: payload.pagination?.totalPages ?? Math.max(1, Math.ceil(total / limit))
+      }
+    };
+  } catch {
+    return { data: [], pagination: emptyPagination(limit) };
+  }
 }
 
 export async function fetchSchoolBySlug(slug: string): Promise<School | null> {
-  const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 60 } });
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    throw new Error(`School API returned ${response.status}`);
+  try {
+    const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 60 } });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`School API returned ${response.status}`);
+    }
+    const payload = (await response.json()) as { data?: unknown };
+    return payload.data ? normalizeSchool(payload.data) : null;
+  } catch {
+    return null;
   }
-  const payload = (await response.json()) as { data?: unknown };
-  return payload.data ? normalizeSchool(payload.data) : null;
 }
 
 export type CityRecord = {
@@ -223,8 +241,12 @@ export type CityRecord = {
 };
 
 export async function fetchCities(): Promise<CityRecord[]> {
-  const response = await fetch(`${API_URL}/api/cities`, { next: { revalidate: 300 } });
-  if (!response.ok) return [];
-  const payload = (await response.json()) as { data?: CityRecord[] };
-  return payload.data ?? [];
+  try {
+    const response = await fetch(`${API_URL}/api/cities`, { next: { revalidate: 300 } });
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { data?: CityRecord[] };
+    return payload.data ?? [];
+  } catch {
+    return [];
+  }
 }

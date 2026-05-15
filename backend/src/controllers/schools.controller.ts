@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { findSchoolBySlug, findSchools } from "../data/mock-schools.js";
@@ -271,7 +272,7 @@ export const updateSchool = asyncHandler(async (request, response) => {
         type: school.type,
         medium: school.medium
       },
-      newValue,
+      newValue: newValue as Prisma.InputJsonValue,
       submittedBy: request.user.id,
       status: "pending"
     }
