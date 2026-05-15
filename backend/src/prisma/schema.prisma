@@ -1,0 +1,367 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  parent
+  school
+  admin
+}
+
+enum SchoolStatus {
+  pending
+  approved
+  rejected
+}
+
+enum InquiryStatus {
+  new
+  contacted
+  interested
+  converted
+  closed
+  admitted
+  rejected
+}
+
+enum PendingUpdateStatus {
+  pending
+  approved
+  rejected
+}
+
+enum GalleryType {
+  photo
+  video
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  phone     String?  @unique
+  role      UserRole @default(parent)
+  googleId  String?  @unique @map("google_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  inquiries      Inquiry[]       @relation("ParentInquiries")
+  inquiryNotes   InquiryNote[]
+  pendingUpdates PendingUpdate[] @relation("SubmittedUpdates")
+  reviewed       PendingUpdate[] @relation("ReviewedUpdates")
+  approvalLogs   ApprovalLog[]
+
+  @@map("users")
+}
+
+model OtpRecord {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  usedAt    DateTime? @map("used_at")
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phone, otp, used])
+  @@index([expiresAt])
+  @@map("otp_records")
+}
+
+model State {
+  id     String @id @default(cuid())
+  name   String
+  slug   String @unique
+  cities City[]
+
+  @@map("states")
+}
+
+model City {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  hasSchools Boolean  @default(false) @map("has_schools")
+  stateId    String   @map("state_id")
+  state      State    @relation(fields: [stateId], references: [id])
+  schools    School[]
+
+  @@map("cities")
+}
+
+model Board {
+  id      String   @id @default(cuid())
+  name    String
+  slug    String   @unique
+  schools School[]
+
+  @@map("boards")
+}
+
+model School {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  cityId      String       @map("city_id")
+  stateId     String       @map("state_id")
+  boardId     String       @map("board_id")
+  type        String
+  medium      String
+  description String
+  status      SchoolStatus @default(pending)
+  isFeatured  Boolean      @default(false) @map("is_featured")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  city              City              @relation(fields: [cityId], references: [id])
+  board             Board             @relation(fields: [boardId], references: [id])
+  details           SchoolDetails?
+  address           SchoolAddress?
+  academics         SchoolAcademics?
+  fees              SchoolFees?
+  facilities        SchoolFacilities?
+  gallery           SchoolGallery[]
+  sections          SchoolSection[]
+  achievements      SchoolAchievement[]
+  inquiries         Inquiry[]
+  pendingUpdates    PendingUpdate[]
+  featuredListings  FeaturedListing[]
+  payments          Payment[]
+
+  @@map("schools")
+}
+
+model SchoolDetails {
+  schoolId        String  @id @map("school_id")
+  principalName   String? @map("principal_name")
+  establishedYear Int?    @map("established_year")
+  affiliationNo   String? @map("affiliation_no")
+  website         String?
+  email           String?
+  phone           String?
+  whatsapp        String?
+  school          School  @relation(fields: [schoolId], references: [id])
+
+  @@map("school_details")
+}
+
+model SchoolAddress {
+  schoolId      String  @id @map("school_id")
+  addressLine   String  @map("address_line")
+  city          String
+  state         String
+  pincode       String
+  lat           Float?
+  lng           Float?
+  googleMapsUrl String? @map("google_maps_url")
+  school        School  @relation(fields: [schoolId], references: [id])
+
+  @@map("school_address")
+}
+
+model SchoolAcademics {
+  schoolId          String   @id @map("school_id")
+  streams           String[]
+  classesFrom       String   @map("classes_from")
+  classesTo         String   @map("classes_to")
+  admissionOpen     Boolean  @default(false) @map("admission_open")
+  admissionStart    DateTime? @map("admission_start")
+  admissionEnd      DateTime? @map("admission_end")
+  documentsRequired String[] @map("documents_required")
+  ageCriteria       String?  @map("age_criteria")
+  school            School   @relation(fields: [schoolId], references: [id])
+
+  @@map("school_academics")
+}
+
+model SchoolFees {
+  schoolId          String   @id @map("school_id")
+  admissionFee      Int?     @map("admission_fee")
+  tuitionFeeMonthly Int?     @map("tuition_fee_monthly")
+  tuitionFeeAnnual  Int?     @map("tuition_fee_annual")
+  transportFee      Int?     @map("transport_fee")
+  hostelFee         Int?     @map("hostel_fee")
+  examFee           Int?     @map("exam_fee")
+  lastUpdated       DateTime @default(now()) @map("last_updated")
+  school            School   @relation(fields: [schoolId], references: [id])
+
+  @@map("school_fees")
+}
+
+model SchoolFacilities {
+  schoolId       String  @id @map("school_id")
+  library        Boolean @default(false)
+  labs           Boolean @default(false)
+  hostel         Boolean @default(false)
+  transport      Boolean @default(false)
+  smartClassroom Boolean @default(false) @map("smart_classroom")
+  wifi           Boolean @default(false)
+  cctv           Boolean @default(false)
+  gym            Boolean @default(false)
+  swimmingPool   Boolean @default(false) @map("swimming_pool")
+  playground     Boolean @default(false)
+  auditorium     Boolean @default(false)
+  cafeteria      Boolean @default(false)
+  school         School  @relation(fields: [schoolId], references: [id])
+
+  @@map("school_facilities")
+}
+
+model SchoolGallery {
+  id            String      @id @default(cuid())
+  schoolId      String      @map("school_id")
+  type          GalleryType
+  cloudinaryUrl String      @map("cloudinary_url")
+  caption       String?
+  order         Int         @default(0)
+  school        School      @relation(fields: [schoolId], references: [id])
+
+  @@map("school_gallery")
+}
+
+model SchoolSection {
+  id          String @id @default(cuid())
+  schoolId    String @map("school_id")
+  title       String
+  content     String
+  sectionType String @map("section_type")
+  order       Int    @default(0)
+  school      School @relation(fields: [schoolId], references: [id])
+
+  @@map("school_sections")
+}
+
+model SchoolAchievement {
+  id          String @id @default(cuid())
+  schoolId    String @map("school_id")
+  title       String
+  year        Int?
+  description String?
+  school      School @relation(fields: [schoolId], references: [id])
+
+  @@map("school_achievements")
+}
+
+model Facility {
+  id   String @id @default(cuid())
+  name String
+  icon String?
+  slug String @unique
+
+  @@map("facilities")
+}
+
+model Inquiry {
+  id            String        @id @default(cuid())
+  parentId      String?       @map("parent_id")
+  schoolId      String        @map("school_id")
+  studentName   String        @map("student_name")
+  classApplying String        @map("class_applying")
+  message       String?
+  status        InquiryStatus @default(new)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  parent        User?         @relation("ParentInquiries", fields: [parentId], references: [id])
+  school        School        @relation(fields: [schoolId], references: [id])
+  notes         InquiryNote[]
+
+  @@map("inquiries")
+}
+
+model InquiryNote {
+  id        String   @id @default(cuid())
+  inquiryId String   @map("inquiry_id")
+  note      String
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id])
+  user      User     @relation(fields: [createdBy], references: [id])
+
+  @@map("inquiry_notes")
+}
+
+model PendingUpdate {
+  id          String              @id @default(cuid())
+  schoolId    String              @map("school_id")
+  fieldType   String              @map("field_type")
+  oldValue    Json?               @map("old_value")
+  newValue    Json                @map("new_value")
+  submittedBy String              @map("submitted_by")
+  status      PendingUpdateStatus @default(pending)
+  reviewedBy  String?             @map("reviewed_by")
+  reviewedAt  DateTime?           @map("reviewed_at")
+  school      School              @relation(fields: [schoolId], references: [id])
+  submitter   User                @relation("SubmittedUpdates", fields: [submittedBy], references: [id])
+  reviewer    User?               @relation("ReviewedUpdates", fields: [reviewedBy], references: [id])
+  approvalLogs ApprovalLog[]
+
+  @@map("pending_updates")
+}
+
+model ApprovalLog {
+  id              String        @id @default(cuid())
+  pendingUpdateId String        @map("pending_update_id")
+  action          String
+  note            String?
+  adminId         String        @map("admin_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  pendingUpdate   PendingUpdate @relation(fields: [pendingUpdateId], references: [id])
+  admin           User          @relation(fields: [adminId], references: [id])
+
+  @@map("approval_logs")
+}
+
+model FeaturedListing {
+  id        String   @id @default(cuid())
+  schoolId  String   @map("school_id")
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  planType  String   @map("plan_type")
+  paymentId String?  @map("payment_id")
+  school    School   @relation(fields: [schoolId], references: [id])
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  @@map("featured_listings")
+}
+
+model Payment {
+  id                String            @id @default(cuid())
+  schoolId          String            @map("school_id")
+  razorpayOrderId   String?           @map("razorpay_order_id")
+  razorpayPaymentId String?           @map("razorpay_payment_id")
+  amount            Int
+  status            String
+  planType          String            @map("plan_type")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  school            School            @relation(fields: [schoolId], references: [id])
+  featuredListings  FeaturedListing[]
+
+  @@map("payments")
+}
+
+model BlogPost {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  content        String
+  author         String
+  publishedAt    DateTime? @map("published_at")
+  seoTitle       String?   @map("seo_title")
+  seoDescription String?   @map("seo_description")
+
+  @@map("blog_posts")
+}
+
+model SeoPage {
+  id                String @id @default(cuid())
+  pageType          String @map("page_type")
+  entityId          String @map("entity_id")
+  customTitle       String? @map("custom_title")
+  customDescription String? @map("custom_description")
+  customContent     String? @map("custom_content")
+
+  @@map("seo_pages")
+}

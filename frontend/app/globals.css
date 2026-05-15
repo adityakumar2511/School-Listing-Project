@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f1efe8;
+  --foreground: #2c2c2a;
+  --blue-50: #e6f1fb;
+  --blue-200: #85b7eb;
+  --blue-400: #378add;
+  --blue-600: #185fa5;
+  --blue-800: #0c447c;
+  --blue-900: #042c53;
+  --amber-50: #faeeda;
+  --amber-400: #ef9f27;
+  --amber-600: #ba7517;
+  --amber-800: #633806;
+  --gray-50: #f1efe8;
+  --gray-100: #d3d1c7;
+  --gray-400: #888780;
+  --gray-900: #2c2c2a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-blue: var(--blue-600);
+  --color-brand-blue-dark: var(--blue-800);
+  --color-brand-amber: var(--amber-400);
+  --font-heading: var(--font-plus-jakarta);
+  --font-body: var(--font-inter);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.container-shell {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+}

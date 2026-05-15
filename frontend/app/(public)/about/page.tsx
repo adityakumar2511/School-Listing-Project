@@ -1,0 +1,10 @@
+export default function AboutPage() {
+  return (
+    <div className="container-shell py-10">
+      <h1 className="font-heading text-4xl font-bold text-[#042C53]">About SchoolSetu</h1>
+      <p className="mt-4 max-w-3xl leading-7 text-[#55534e]">
+        SchoolSetu helps parents discover and compare schools while giving schools free digital profiles, inquiry management, and online visibility.
+      </p>
+    </div>
+  );
+}
