@@ -170,30 +170,54 @@ export async function findSchools(
   const where = buildSchoolWhere(filters);
   const skip = (page - 1) * limit;
 
-  const [data, total] = await prisma.$transaction([
-    prisma.school.findMany({
-      where,
-      include: schoolInclude,
-      orderBy: buildOrderBy(sort),
-      skip,
-      take: limit
-    }),
-    prisma.school.count({ where })
-  ]);
+  try {
+    const [data, total] = await prisma.$transaction([
+      prisma.school.findMany({
+        where,
+        include: schoolInclude,
+        orderBy: buildOrderBy(sort),
+        skip,
+        take: limit
+      }),
+      prisma.school.count({ where })
+    ]);
 
-  return { data, total };
+    return { data, total };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.constructor.name === "PrismaClientInitializationError" ||
+        error.message.includes("Can't reach database server"))
+    ) {
+      console.error("[DB] findSchools: database unreachable, returning empty result.");
+      return { data: [], total: 0 };
+    }
+    throw error;
+  }
 }
 
 export type SchoolListItem = Awaited<ReturnType<typeof findSchools>>["data"][number];
 
-export function findSchoolBySlug(slug: string) {
-  return prisma.school.findFirst({
-    where: {
-      slug,
-      status: "approved"
-    },
-    include: schoolInclude
-  });
+export async function findSchoolBySlug(slug: string) {
+  try {
+    return await prisma.school.findFirst({
+      where: {
+        slug,
+        status: "approved"
+      },
+      include: schoolInclude
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.constructor.name === "PrismaClientInitializationError" ||
+        error.message.includes("Can't reach database server"))
+    ) {
+      console.error("[DB] findSchoolBySlug: database unreachable, returning null.");
+      return null;
+    }
+    throw error;
+  }
 }
 
 export const mockSchools: never[] = [];

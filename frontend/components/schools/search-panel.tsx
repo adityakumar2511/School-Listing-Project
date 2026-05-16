@@ -4,7 +4,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { boards, facilities, targetCities } from "@/data/schools";
+import { BOARDS, TARGET_CITIES, facilities } from "@/data/schools";
 
 type SearchPanelProps = {
   showFacility?: boolean;
@@ -47,7 +47,7 @@ export function SearchPanel({ showFacility = true }: SearchPanelProps) {
       </label>
       <select value={city} onChange={(event) => setCity(event.target.value)} className="h-12 rounded-[8px] border border-[#D3D1C7] px-3 outline-none focus:border-[#185FA5]">
         <option value="">All cities</option>
-        {targetCities.map((item) => (
+        {TARGET_CITIES.map((item) => (
           <option key={item.slug} value={item.slug}>
             {item.name}
           </option>
@@ -55,7 +55,7 @@ export function SearchPanel({ showFacility = true }: SearchPanelProps) {
       </select>
       <select value={board} onChange={(event) => setBoard(event.target.value)} className="h-12 rounded-[8px] border border-[#D3D1C7] px-3 outline-none focus:border-[#185FA5]">
         <option value="">All boards</option>
-        {boards.map((item) => (
+        {BOARDS.map((item) => (
           <option key={item} value={item.toLowerCase().replace(" ", "_")}>
             {item}
           </option>

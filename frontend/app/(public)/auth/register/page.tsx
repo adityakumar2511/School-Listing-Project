@@ -49,41 +49,25 @@ export default function RegisterPage() {
 
   const parentForm = useForm<ParentValues>({
     resolver: zodResolver(parentSchema),
-    defaultValues: {
-      fullName: "",
-      phone: "",
-      email: ""
-    }
+    defaultValues: { fullName: "", phone: "", email: "" }
   });
 
   const schoolForm = useForm<SchoolValues>({
     resolver: zodResolver(schoolSchema),
-    defaultValues: {
-      schoolName: "",
-      contactPersonName: "",
-      phone: "",
-      city: ""
-    }
+    defaultValues: { schoolName: "", contactPersonName: "", phone: "", city: "" }
   });
 
   async function submitParent(values: ParentValues) {
     setSuccessMessage("");
     setSubmitError("");
     const phone = formatPhone(values.phone);
-
     try {
       const response = await fetch(`${API_URL}/api/auth/send-otp`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone })
       });
-
-      if (!response.ok) {
-        throw new Error("Unable to send OTP");
-      }
-
+      if (!response.ok) throw new Error("Unable to send OTP");
       router.push(`/auth/verify-otp?phone=${encodeURIComponent(phone)}`);
     } catch {
       setSubmitError("Could not send OTP. Please check the phone number and try again.");
@@ -93,13 +77,10 @@ export default function RegisterPage() {
   async function submitSchool(values: SchoolValues) {
     setSuccessMessage("");
     setSubmitError("");
-
     try {
       const response = await fetch(`${API_URL}/api/schools`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: values.schoolName,
           contactPersonName: values.contactPersonName,
@@ -107,11 +88,9 @@ export default function RegisterPage() {
           city: values.city
         })
       });
-
       if (!response.ok && response.status !== 401 && response.status !== 403) {
         throw new Error("Unable to register school");
       }
-
       schoolForm.reset();
       setSuccessMessage("School registration submitted. Our team will contact you shortly.");
     } catch {
@@ -133,65 +112,50 @@ export default function RegisterPage() {
         <div className="mt-7 grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => {
-              setRole("parent");
-              setSuccessMessage("");
-              setSubmitError("");
-            }}
+            onClick={() => { setRole("parent"); setSuccessMessage(""); setSubmitError(""); }}
             className={cn(
               "rounded-xl border p-4 text-left transition",
               role === "parent" ? "border-[#185FA5] bg-blue-50" : "border-[#D3D1C7] bg-white hover:border-[#85B7EB]"
             )}
           >
-            <span className="text-2xl" aria-hidden="true">
-              👨‍👩‍👧
-            </span>
+            <span className="text-2xl" aria-hidden="true">👨‍👩‍👧</span>
             <span className="mt-3 block text-sm font-semibold text-[#0C447C]">I&apos;m a Parent</span>
             <span className="mt-1 block text-xs leading-5 text-[#55534e]">Find schools for my child</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setRole("school");
-              setSuccessMessage("");
-              setSubmitError("");
-            }}
+            onClick={() => { setRole("school"); setSuccessMessage(""); setSubmitError(""); }}
             className={cn(
               "rounded-xl border p-4 text-left transition",
               role === "school" ? "border-[#185FA5] bg-blue-50" : "border-[#D3D1C7] bg-white hover:border-[#85B7EB]"
             )}
           >
-            <span className="text-2xl" aria-hidden="true">
-              🏫
-            </span>
+            <span className="text-2xl" aria-hidden="true">🏫</span>
             <span className="mt-3 block text-sm font-semibold text-[#0C447C]">I&apos;m a School</span>
             <span className="mt-1 block text-xs leading-5 text-[#55534e]">List my school for free</span>
           </button>
         </div>
 
-        {!role ? (
+        {!role && (
           <p className="mt-5 rounded-lg border border-[#D3D1C7] bg-[#F1EFE8] px-4 py-3 text-center text-sm text-[#55534e]">
             Choose a role to continue.
           </p>
-        ) : null}
+        )}
 
-        {role === "parent" ? (
+        {role === "parent" && (
           <form onSubmit={parentForm.handleSubmit(submitParent)} className="mt-6 grid gap-4">
             <label className="grid gap-1 text-sm font-medium">
               Full Name
               <input className={fieldClass(Boolean(parentForm.formState.errors.fullName))} {...parentForm.register("fullName")} />
-              {parentForm.formState.errors.fullName ? (
+              {parentForm.formState.errors.fullName && (
                 <span className="text-xs text-red-600">{parentForm.formState.errors.fullName.message}</span>
-              ) : null}
+              )}
             </label>
-
             <label className="grid gap-1 text-sm font-medium">
               Phone Number
               <div className="flex">
-                <span className="inline-flex items-center rounded-l-lg border border-r-0 border-[#D3D1C7] bg-[#F1EFE8] px-3 text-sm text-[#55534e]">
-                  +91
-                </span>
+                <span className="inline-flex items-center rounded-l-lg border border-r-0 border-[#D3D1C7] bg-[#F1EFE8] px-3 text-sm text-[#55534e]">+91</span>
                 <input
                   inputMode="numeric"
                   maxLength={10}
@@ -199,56 +163,49 @@ export default function RegisterPage() {
                   {...parentForm.register("phone")}
                 />
               </div>
-              {parentForm.formState.errors.phone ? (
+              {parentForm.formState.errors.phone && (
                 <span className="text-xs text-red-600">{parentForm.formState.errors.phone.message}</span>
-              ) : null}
+              )}
             </label>
-
             <label className="grid gap-1 text-sm font-medium">
-              Email
+              Email <span className="font-normal text-[#888780]">(optional)</span>
               <input className={fieldClass(Boolean(parentForm.formState.errors.email))} {...parentForm.register("email")} />
-              {parentForm.formState.errors.email ? (
+              {parentForm.formState.errors.email && (
                 <span className="text-xs text-red-600">{parentForm.formState.errors.email.message}</span>
-              ) : null}
+              )}
             </label>
-
-            {submitError ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p> : null}
-
+            {submitError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>}
             <button
               type="submit"
               disabled={parentForm.formState.isSubmitting}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#EF9F27] px-4 font-semibold text-[#633806] transition hover:bg-[#d98c18] disabled:opacity-60"
             >
-              {parentForm.formState.isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
+              {parentForm.formState.isSubmitting && <Loader2 className="animate-spin" size={18} />}
               Send OTP
             </button>
           </form>
-        ) : null}
+        )}
 
-        {role === "school" ? (
+        {role === "school" && (
           <form onSubmit={schoolForm.handleSubmit(submitSchool)} className="mt-6 grid gap-4">
             <label className="grid gap-1 text-sm font-medium">
               School Name
               <input className={fieldClass(Boolean(schoolForm.formState.errors.schoolName))} {...schoolForm.register("schoolName")} />
-              {schoolForm.formState.errors.schoolName ? (
+              {schoolForm.formState.errors.schoolName && (
                 <span className="text-xs text-red-600">{schoolForm.formState.errors.schoolName.message}</span>
-              ) : null}
+              )}
             </label>
-
             <label className="grid gap-1 text-sm font-medium">
               Contact Person Name
               <input className={fieldClass(Boolean(schoolForm.formState.errors.contactPersonName))} {...schoolForm.register("contactPersonName")} />
-              {schoolForm.formState.errors.contactPersonName ? (
+              {schoolForm.formState.errors.contactPersonName && (
                 <span className="text-xs text-red-600">{schoolForm.formState.errors.contactPersonName.message}</span>
-              ) : null}
+              )}
             </label>
-
             <label className="grid gap-1 text-sm font-medium">
               Phone Number
               <div className="flex">
-                <span className="inline-flex items-center rounded-l-lg border border-r-0 border-[#D3D1C7] bg-[#F1EFE8] px-3 text-sm text-[#55534e]">
-                  +91
-                </span>
+                <span className="inline-flex items-center rounded-l-lg border border-r-0 border-[#D3D1C7] bg-[#F1EFE8] px-3 text-sm text-[#55534e]">+91</span>
                 <input
                   inputMode="numeric"
                   maxLength={10}
@@ -256,39 +213,34 @@ export default function RegisterPage() {
                   {...schoolForm.register("phone")}
                 />
               </div>
-              {schoolForm.formState.errors.phone ? (
+              {schoolForm.formState.errors.phone && (
                 <span className="text-xs text-red-600">{schoolForm.formState.errors.phone.message}</span>
-              ) : null}
+              )}
             </label>
-
             <label className="grid gap-1 text-sm font-medium">
               City
               <select className={fieldClass(Boolean(schoolForm.formState.errors.city))} {...schoolForm.register("city")}>
                 <option value="">Select city</option>
                 {cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
+                  <option key={city} value={city}>{city}</option>
                 ))}
               </select>
-              {schoolForm.formState.errors.city ? (
+              {schoolForm.formState.errors.city && (
                 <span className="text-xs text-red-600">{schoolForm.formState.errors.city.message}</span>
-              ) : null}
+              )}
             </label>
-
-            {submitError ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p> : null}
-            {successMessage ? <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{successMessage}</p> : null}
-
+            {submitError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>}
+            {successMessage && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{successMessage}</p>}
             <button
               type="submit"
               disabled={schoolForm.formState.isSubmitting}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#185FA5] px-4 font-semibold text-white transition hover:bg-[#0C447C] disabled:opacity-60"
             >
-              {schoolForm.formState.isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
+              {schoolForm.formState.isSubmitting && <Loader2 className="animate-spin" size={18} />}
               Register School
             </button>
           </form>
-        ) : null}
+        )}
 
         <p className="mt-6 text-center text-sm text-[#55534e]">
           Already have an account?{" "}

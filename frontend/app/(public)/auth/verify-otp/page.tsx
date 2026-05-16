@@ -11,12 +11,8 @@ const OTP_LENGTH = 6;
 
 function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) {
-    return `+${digits}`;
-  }
-  if (digits.length === 10) {
-    return `+91${digits}`;
-  }
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  if (digits.length === 10) return `+91${digits}`;
   return value.startsWith("+") ? value : `+${digits}`;
 }
 
@@ -45,11 +41,9 @@ function VerifyOtpContent() {
 
   useEffect(() => {
     if (!hasPhone || secondsLeft <= 0) return;
-
     const timer = window.setInterval(() => {
-      setSecondsLeft((current) => Math.max(0, current - 1));
+      setSecondsLeft((c) => Math.max(0, c - 1));
     }, 1000);
-
     return () => window.clearInterval(timer);
   }, [hasPhone, secondsLeft]);
 
@@ -57,20 +51,13 @@ function VerifyOtpContent() {
     setError("");
     setPhoneError("");
     setIsSendingOtp(true);
-
     try {
       const response = await fetch(`${API_URL}/api/auth/send-otp`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: nextPhone })
       });
-
-      if (!response.ok) {
-        throw new Error("Unable to send OTP");
-      }
-
+      if (!response.ok) throw new Error("Unable to send OTP");
       setSecondsLeft(30);
     } catch {
       setError("Could not send OTP. Please try again.");
@@ -86,7 +73,6 @@ function VerifyOtpContent() {
       setPhoneError("Phone number must be 10 digits");
       return;
     }
-
     const nextPhone = normalizePhone(rawDigits);
     setPhone(nextPhone);
     router.replace(`/auth/verify-otp?phone=${encodeURIComponent(nextPhone)}`);
@@ -96,25 +82,19 @@ function VerifyOtpContent() {
 
   const verifyOtp = useCallback(async (value: string) => {
     if (!phone || value.length !== OTP_LENGTH) return;
-
     setError("");
     setIsVerifying(true);
-
     try {
       const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, otp: value })
       });
-
       const payload = (await response.json()) as {
         token?: string;
         error?: string;
         remainingAttempts?: number;
       };
-
       if (!response.ok) {
         const remaining = payload.remainingAttempts;
         throw new Error(
@@ -126,10 +106,9 @@ function VerifyOtpContent() {
       if (payload.token) {
         window.localStorage.setItem("schoolsetu_token", payload.token);
       }
-
       router.replace("/dashboard");
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Invalid OTP. Try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid OTP. Try again.");
       setShouldShake(true);
       setDigits(Array.from({ length: OTP_LENGTH }, () => ""));
       submittedOtpRef.current = "";
@@ -153,10 +132,7 @@ function VerifyOtpContent() {
     nextDigits[index] = nextValue;
     setDigits(nextDigits);
     setError("");
-
-    if (nextValue && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
-    }
+    if (nextValue && index < OTP_LENGTH - 1) inputsRef.current[index + 1]?.focus();
   }
 
   function handleKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
@@ -169,11 +145,9 @@ function VerifyOtpContent() {
     event.preventDefault();
     const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
     if (!pasted) return;
-
-    const nextDigits = Array.from({ length: OTP_LENGTH }, (_, index) => pasted[index] ?? "");
+    const nextDigits = Array.from({ length: OTP_LENGTH }, (_, i) => pasted[i] ?? "");
     setDigits(nextDigits);
     setError("");
-
     const nextFocusIndex = Math.min(pasted.length, OTP_LENGTH - 1);
     window.requestAnimationFrame(() => inputsRef.current[nextFocusIndex]?.focus());
   }
@@ -200,7 +174,9 @@ function VerifyOtpContent() {
         <div className="mt-5 text-center">
           <h1 className="font-heading text-2xl font-bold text-[#0C447C]">Verify Phone</h1>
           <p className="mt-2 text-sm text-gray-500">
-            {hasPhone ? `Enter the 6-digit OTP sent to ${visiblePhone(phone)}` : "Enter your phone number to receive an OTP"}
+            {hasPhone
+              ? `Enter the 6-digit OTP sent to ${visiblePhone(phone)}`
+              : "Enter your phone number to receive an OTP"}
           </p>
         </div>
 
@@ -214,10 +190,7 @@ function VerifyOtpContent() {
                 </span>
                 <input
                   value={phoneInput}
-                  onChange={(event) => {
-                    setPhoneInput(event.target.value.replace(/\D/g, "").slice(0, 10));
-                    setPhoneError("");
-                  }}
+                  onChange={(e) => { setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneError(""); }}
                   inputMode="numeric"
                   maxLength={10}
                   className={cn(
@@ -226,17 +199,15 @@ function VerifyOtpContent() {
                   )}
                 />
               </div>
-              {phoneError ? <span className="text-xs text-red-600">{phoneError}</span> : null}
+              {phoneError && <span className="text-xs text-red-600">{phoneError}</span>}
             </label>
-
-            {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
             <button
               type="submit"
               disabled={isSendingOtp}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#EF9F27] px-4 font-semibold text-[#633806] transition hover:bg-[#d98c18] disabled:opacity-60"
             >
-              {isSendingOtp ? <Loader2 className="animate-spin" size={18} /> : null}
+              {isSendingOtp && <Loader2 className="animate-spin" size={18} />}
               Send OTP
             </button>
           </form>
@@ -246,12 +217,10 @@ function VerifyOtpContent() {
               {digits.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(element) => {
-                    inputsRef.current[index] = element;
-                  }}
+                  ref={(el) => { inputsRef.current[index] = el; }}
                   value={digit}
-                  onChange={(event) => handleDigitChange(index, event.target.value)}
-                  onKeyDown={(event) => handleKeyDown(index, event)}
+                  onChange={(e) => handleDigitChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
                   inputMode="numeric"
                   maxLength={1}
@@ -264,9 +233,7 @@ function VerifyOtpContent() {
                 />
               ))}
             </div>
-
-            {error ? <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">{error}</p> : null}
-
+            {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">{error}</p>}
             <div className="mt-5 flex items-center justify-center">
               {isVerifying ? (
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-[#185FA5]">

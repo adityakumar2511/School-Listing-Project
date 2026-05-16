@@ -18,7 +18,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
-  RAZORPAY_WEBHOOK_SECRET: z.string().optional()
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  ADMIN_NOTIFICATION_PHONE: z.string().optional(),
+  SCHOOL_REGISTRATION_EMAIL: z.string().optional()
 });
 
 export const env = envSchema.parse(process.env);

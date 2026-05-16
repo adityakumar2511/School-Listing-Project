@@ -1,199 +1,494 @@
-export type School = {
-  id: string;
-  name: string;
-  slug: string;
-  city: string;
-  citySlug: string;
-  state: string;
-  board: string;
-  type: string;
-  format: string;
-  medium: string;
-  description: string;
-  logo: string;
-  image: string;
-  phone: string;
-  whatsapp: string;
-  address: string;
-  establishedYear: number;
-  affiliationNo: string;
-  classes: string;
-  admissionOpen: boolean;
-  isFeatured: boolean;
-  monthlyFee: number;
-  annualFee: number;
-  facilities: string[];
-  categories: string[];
-  lat: number;
-  lng: number;
-  admissionFee?: number;
-  transportFee?: number | null;
-  hostelFee?: number | null;
-  examFee?: number;
-  gallery?: string[];
-  raw?: unknown;
-};
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-export const targetCities = [
-  { name: "Prayagraj", slug: "prayagraj" },
-  { name: "Lucknow", slug: "lucknow" },
-  { name: "Kanpur", slug: "kanpur" },
-  { name: "Jhansi", slug: "jhansi" },
-  { name: "Banda", slug: "banda" }
-];
+export type Board = "CBSE" | "ICSE" | "UP Board" | "IB" | "IGCSE"
 
-export const schools: School[] = [
+export type SchoolType =
+  | "Private"
+  | "Government"
+  | "Government Aided"
+  | "Semi-Residential"
+
+export type Gender = "Co-Educational" | "Boys" | "Girls"
+
+export type Medium = "English" | "Hindi" | "Urdu" | "English+Hindi"
+
+export type EducationLevel =
+  | "Preschool"
+  | "Primary"
+  | "Middle"
+  | "Secondary"
+  | "Senior Secondary"
+
+export type FeeRange = "budget" | "mid-range" | "premium" | "luxury"
+
+export type SpecialFocus =
+  | "IIT/NEET"
+  | "Sports"
+  | "Scholarship"
+  | "Minority"
+  | "Robotics"
+  | "Arts"
+
+export interface SchoolFacilities {
+  hostel: boolean
+  transport: boolean
+  library: boolean
+  labs: boolean
+  smartClassroom: boolean
+  wifi: boolean
+  cctv: boolean
+  sportsGround: boolean
+  swimmingPool: boolean
+  auditorium: boolean
+  cafeteria: boolean
+  medicalRoom: boolean
+}
+
+export interface School {
+  id: string
+  name: string
+  slug: string
+  tagline?: string
+  description: string
+
+  city: string
+  citySlug: string
+  area: string
+  address: string
+  pincode: string
+  googleMapsUrl?: string
+
+  board: Board
+  schoolType: SchoolType
+  gender: Gender
+  medium: Medium[]
+  educationLevels: EducationLevel[]
+  classesFrom: string
+  classesTo: string
+
+  admissionOpen: boolean
+  admissionSession: string
+  admissionClasses: string[]
+
+  feeRange: FeeRange
+  admissionFee?: number
+  monthlyFee?: number
+  annualFee?: number
+  transportFee?: number
+  hostelFee?: number
+
+  phone: string
+  whatsapp: string
+  email?: string
+  website?: string
+
+  principalName?: string
+  establishedYear?: number
+  affiliationNo?: string
+
+  facilities: SchoolFacilities
+  specialFocus: SpecialFocus[]
+
+  logo?: string
+  coverImage?: string
+  gallery?: string[]
+
+  isFeatured: boolean
+  isVerified: boolean
+  status: "approved" | "pending"
+  createdAt: string
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+export const BOARDS: Board[] = ["CBSE", "ICSE", "UP Board", "IB", "IGCSE"]
+
+export const SCHOOL_TYPES: SchoolType[] = [
+  "Private",
+  "Government",
+  "Government Aided",
+  "Semi-Residential",
+]
+
+export const GENDERS: Gender[] = ["Co-Educational", "Boys", "Girls"]
+
+export const MEDIUMS: Medium[] = ["English", "Hindi", "Urdu", "English+Hindi"]
+
+export const EDUCATION_LEVELS: EducationLevel[] = [
+  "Preschool",
+  "Primary",
+  "Middle",
+  "Secondary",
+  "Senior Secondary",
+]
+
+export const SPECIAL_FOCUS_OPTIONS: SpecialFocus[] = [
+  "IIT/NEET",
+  "Sports",
+  "Scholarship",
+  "Minority",
+  "Robotics",
+  "Arts",
+]
+
+export const FEE_RANGES = {
+  budget: { label: "Budget", description: "Under ₹2,000/month" },
+  "mid-range": { label: "Mid-Range", description: "₹2,000 - ₹5,000/month" },
+  premium: { label: "Premium", description: "₹5,000 - ₹15,000/month" },
+  luxury: { label: "Luxury", description: "Above ₹15,000/month" },
+} as const
+
+export const TARGET_CITIES = [
+  { name: "Prayagraj", slug: "prayagraj", state: "Uttar Pradesh" },
+  { name: "Lucknow", slug: "lucknow", state: "Uttar Pradesh" },
+  { name: "Kanpur", slug: "kanpur", state: "Uttar Pradesh" },
+  { name: "Jhansi", slug: "jhansi", state: "Uttar Pradesh" },
+  { name: "Banda", slug: "banda", state: "Uttar Pradesh" },
+]
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+export const mockSchools: School[] = [
   {
-    id: "sch_001",
+    id: "1",
     name: "Sangam Valley International School",
     slug: "sangam-valley-international-school",
+    tagline: "Excellence in Education since 1998",
+    description:
+      "Prayagraj ke Civil Lines area mein located, Sangam Valley CBSE affiliated school hai jo Class Nursery se 12 tak quality education provide karta hai. IIT/NEET coaching integrated curriculum ke saath.",
     city: "Prayagraj",
     citySlug: "prayagraj",
-    state: "Uttar Pradesh",
+    area: "Civil Lines",
+    address: "14, Thornhill Road, Civil Lines, Prayagraj",
+    pincode: "211001",
     board: "CBSE",
-    type: "Co-ed",
-    format: "Day-Boarding",
-    medium: "English",
-    description:
-      "A CBSE school with strong science labs, Olympiad support, and structured admission counseling for middle-income families.",
-    logo: "/school-logo.svg",
-    image: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80",
-    phone: "+91 98765 43210",
-    whatsapp: "919876543210",
-    address: "Civil Lines, Prayagraj, Uttar Pradesh",
-    establishedYear: 2008,
-    affiliationNo: "2130XXX",
-    classes: "Nursery - XII",
+    schoolType: "Private",
+    gender: "Co-Educational",
+    medium: ["English"],
+    educationLevels: [
+      "Preschool",
+      "Primary",
+      "Middle",
+      "Secondary",
+      "Senior Secondary",
+    ],
+    classesFrom: "Nursery",
+    classesTo: "Class 12",
     admissionOpen: true,
-    isFeatured: true,
+    admissionSession: "2025-26",
+    admissionClasses: ["Nursery", "Class 1", "Class 6", "Class 11"],
+    feeRange: "mid-range",
+    admissionFee: 25000,
     monthlyFee: 4200,
     annualFee: 50400,
-    facilities: ["Library", "Labs", "Transport", "Smart Classroom", "CCTV", "Playground"],
-    categories: ["iit-neet", "sports"],
-    lat: 25.4358,
-    lng: 81.8463
+    transportFee: 1200,
+    phone: "0532-2240100",
+    whatsapp: "919532240100",
+    email: "info@sangamvalley.edu.in",
+    principalName: "Dr. Meera Srivastava",
+    establishedYear: 1998,
+    affiliationNo: "2130045",
+    facilities: {
+      hostel: false,
+      transport: true,
+      library: true,
+      labs: true,
+      smartClassroom: true,
+      wifi: true,
+      cctv: true,
+      sportsGround: true,
+      swimmingPool: false,
+      auditorium: true,
+      cafeteria: false,
+      medicalRoom: true,
+    },
+    specialFocus: ["IIT/NEET"],
+    isFeatured: true,
+    isVerified: true,
+    status: "approved",
+    createdAt: "2024-01-15",
   },
   {
-    id: "sch_002",
-    name: "Avadh Scholars Academy",
-    slug: "avadh-scholars-academy",
-    city: "Lucknow",
-    citySlug: "lucknow",
-    state: "Uttar Pradesh",
-    board: "ICSE",
-    type: "Co-ed",
-    format: "Day",
-    medium: "English",
+    id: "2",
+    name: "Allahabad Public School",
+    slug: "allahabad-public-school",
+    tagline: "Building Leaders of Tomorrow",
     description:
-      "An ICSE campus focused on communication, project-based learning, sports participation, and parent-friendly reporting.",
-    logo: "/school-logo.svg",
-    image: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80",
-    phone: "+91 99887 77665",
-    whatsapp: "919988777665",
-    address: "Gomti Nagar, Lucknow, Uttar Pradesh",
-    establishedYear: 1999,
-    affiliationNo: "UPICSE-112",
-    classes: "LKG - XII",
+      "ICSE board affiliated school in Lukerganj with state-of-the-art facilities. Known for academic excellence and extracurricular activities.",
+    city: "Prayagraj",
+    citySlug: "prayagraj",
+    area: "Lukerganj",
+    address: "Civil Station, Lukerganj, Prayagraj",
+    pincode: "211001",
+    board: "ICSE",
+    schoolType: "Private",
+    gender: "Co-Educational",
+    medium: ["English"],
+    educationLevels: ["Primary", "Middle", "Secondary", "Senior Secondary"],
+    classesFrom: "Class 1",
+    classesTo: "Class 12",
     admissionOpen: true,
-    isFeatured: true,
+    admissionSession: "2025-26",
+    admissionClasses: ["Class 1", "Class 6", "Class 11"],
+    feeRange: "premium",
+    admissionFee: 30000,
     monthlyFee: 5800,
     annualFee: 69600,
-    facilities: ["Library", "Labs", "Transport", "Auditorium", "Cafeteria", "Playground"],
-    categories: ["sports"],
-    lat: 26.8467,
-    lng: 80.9462
+    transportFee: 1500,
+    phone: "0532-2400200",
+    whatsapp: "919532400200",
+    email: "admissions@aps.edu.in",
+    principalName: "Mr. Rajesh Kumar Pandey",
+    establishedYear: 1985,
+    affiliationNo: "ICS-UP-045",
+    facilities: {
+      hostel: false,
+      transport: true,
+      library: true,
+      labs: true,
+      smartClassroom: true,
+      wifi: true,
+      cctv: true,
+      sportsGround: true,
+      swimmingPool: false,
+      auditorium: true,
+      cafeteria: true,
+      medicalRoom: true,
+    },
+    specialFocus: ["IIT/NEET", "Arts"],
+    isFeatured: true,
+    isVerified: true,
+    status: "approved",
+    createdAt: "2024-01-20",
   },
   {
-    id: "sch_003",
-    name: "Bundelkhand Public School",
-    slug: "bundelkhand-public-school",
-    city: "Jhansi",
-    citySlug: "jhansi",
-    state: "Uttar Pradesh",
-    board: "CBSE",
-    type: "Co-ed",
-    format: "Boarding",
-    medium: "English/Hindi",
+    id: "3",
+    name: "Naini Residential Academy",
+    slug: "naini-residential-academy",
+    tagline: "Where Discipline Meets Excellence",
     description:
-      "Residential and day-boarding school with hostel, disciplined routines, competitive exam foundation, and sports coaching.",
-    logo: "/school-logo.svg",
-    image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
-    phone: "+91 91234 56780",
-    whatsapp: "919123456780",
-    address: "Sipri Road, Jhansi, Uttar Pradesh",
-    establishedYear: 2012,
-    affiliationNo: "2131XXX",
-    classes: "I - XII",
-    admissionOpen: false,
-    isFeatured: false,
+      "Boys residential school in Naini with full hostel facility. Specializes in sports and IIT/NEET preparation for Class 6-12 students.",
+    city: "Prayagraj",
+    citySlug: "prayagraj",
+    area: "Naini",
+    address: "Industrial Area, Naini, Prayagraj",
+    pincode: "211008",
+    board: "CBSE",
+    schoolType: "Semi-Residential",
+    gender: "Boys",
+    medium: ["English", "Hindi"],
+    educationLevels: ["Middle", "Secondary", "Senior Secondary"],
+    classesFrom: "Class 6",
+    classesTo: "Class 12",
+    admissionOpen: true,
+    admissionSession: "2025-26",
+    admissionClasses: ["Class 6", "Class 9", "Class 11"],
+    feeRange: "mid-range",
+    admissionFee: 15000,
     monthlyFee: 3600,
     annualFee: 43200,
-    facilities: ["Hostel", "Transport", "Labs", "CCTV", "Playground", "Gym"],
-    categories: ["hostel", "iit-neet"],
-    lat: 25.4484,
-    lng: 78.5685
+    hostelFee: 8000,
+    transportFee: 0,
+    phone: "0532-2780300",
+    whatsapp: "919532780300",
+    principalName: "Col. (Retd.) Arun Singh",
+    establishedYear: 2005,
+    affiliationNo: "2130089",
+    facilities: {
+      hostel: true,
+      transport: false,
+      library: true,
+      labs: true,
+      smartClassroom: false,
+      wifi: false,
+      cctv: true,
+      sportsGround: true,
+      swimmingPool: false,
+      auditorium: false,
+      cafeteria: true,
+      medicalRoom: true,
+    },
+    specialFocus: ["Sports", "IIT/NEET"],
+    isFeatured: false,
+    isVerified: true,
+    status: "approved",
+    createdAt: "2024-02-01",
   },
   {
-    id: "sch_004",
-    name: "Kanpur Girls Senior Secondary School",
-    slug: "kanpur-girls-senior-secondary-school",
-    city: "Kanpur",
-    citySlug: "kanpur",
-    state: "Uttar Pradesh",
+    id: "4",
+    name: "Govt. Jubilee Inter College",
+    slug: "govt-jubilee-inter-college",
+    tagline: "Government School, Quality Education",
+    description:
+      "UP Board affiliated government school providing affordable quality education. Scholarship programs available for meritorious students.",
+    city: "Prayagraj",
+    citySlug: "prayagraj",
+    area: "Allahabad City",
+    address: "Jubilee Road, Allahabad City, Prayagraj",
+    pincode: "211002",
     board: "UP Board",
-    type: "Girls",
-    format: "Day",
-    medium: "Hindi",
-    description:
-      "Affordable girls school with a strong arts and commerce pathway, scholarship support, and safe transport options.",
-    logo: "/school-logo.svg",
-    image: "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80",
-    phone: "+91 93456 78901",
-    whatsapp: "919345678901",
-    address: "Swaroop Nagar, Kanpur, Uttar Pradesh",
-    establishedYear: 1988,
-    affiliationNo: "UPB-7791",
-    classes: "VI - XII",
+    schoolType: "Government",
+    gender: "Co-Educational",
+    medium: ["Hindi"],
+    educationLevels: ["Middle", "Secondary", "Senior Secondary"],
+    classesFrom: "Class 6",
+    classesTo: "Class 12",
     admissionOpen: true,
+    admissionSession: "2025-26",
+    admissionClasses: ["Class 6", "Class 9", "Class 11"],
+    feeRange: "budget",
+    admissionFee: 500,
+    monthlyFee: 200,
+    phone: "0532-2500400",
+    whatsapp: "919532500400",
+    principalName: "Shri Ramesh Chandra Verma",
+    establishedYear: 1920,
+    facilities: {
+      hostel: false,
+      transport: false,
+      library: true,
+      labs: false,
+      smartClassroom: false,
+      wifi: false,
+      cctv: false,
+      sportsGround: true,
+      swimmingPool: false,
+      auditorium: false,
+      cafeteria: false,
+      medicalRoom: false,
+    },
+    specialFocus: ["Scholarship"],
     isFeatured: false,
-    monthlyFee: 1800,
-    annualFee: 21600,
-    facilities: ["Library", "Transport", "CCTV", "Smart Classroom"],
-    categories: ["girls"],
-    lat: 26.4499,
-    lng: 80.3319
+    isVerified: true,
+    status: "approved",
+    createdAt: "2024-02-10",
   },
   {
-    id: "sch_005",
-    name: "Banda Central Academy",
-    slug: "banda-central-academy",
-    city: "Banda",
-    citySlug: "banda",
-    state: "Uttar Pradesh",
-    board: "CBSE",
-    type: "Co-ed",
-    format: "Day",
-    medium: "English/Hindi",
+    id: "5",
+    name: "St. Joseph's Convent School",
+    slug: "st-josephs-convent-school",
+    tagline: "Nurturing Young Minds with Values",
     description:
-      "Value-focused CBSE school for Banda families with transport, digital classrooms, and close academic mentoring.",
-    logo: "/school-logo.svg",
-    image: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80",
-    phone: "+91 95678 12340",
-    whatsapp: "919567812340",
-    address: "Station Road, Banda, Uttar Pradesh",
-    establishedYear: 2015,
-    affiliationNo: "2132XXX",
-    classes: "Nursery - X",
-    admissionOpen: true,
+      "Premier girls school in Cantonment area. ICSE affiliated with focus on holistic development through academics and performing arts.",
+    city: "Prayagraj",
+    citySlug: "prayagraj",
+    area: "Cantonment",
+    address: "MG Marg, Cantonment, Prayagraj",
+    pincode: "211001",
+    board: "ICSE",
+    schoolType: "Private",
+    gender: "Girls",
+    medium: ["English"],
+    educationLevels: ["Preschool", "Primary", "Middle", "Secondary"],
+    classesFrom: "Nursery",
+    classesTo: "Class 10",
+    admissionOpen: false,
+    admissionSession: "2025-26",
+    admissionClasses: [],
+    feeRange: "mid-range",
+    admissionFee: 20000,
+    monthlyFee: 3800,
+    annualFee: 45600,
+    transportFee: 1000,
+    phone: "0532-2620500",
+    whatsapp: "919532620500",
+    email: "info@stjosephsprayagraj.edu.in",
+    principalName: "Sr. Maria Fernandes",
+    establishedYear: 1952,
+    affiliationNo: "ICS-UP-012",
+    facilities: {
+      hostel: false,
+      transport: true,
+      library: true,
+      labs: true,
+      smartClassroom: true,
+      wifi: false,
+      cctv: true,
+      sportsGround: false,
+      swimmingPool: false,
+      auditorium: true,
+      cafeteria: false,
+      medicalRoom: false,
+    },
+    specialFocus: ["Arts"],
     isFeatured: false,
-    monthlyFee: 2400,
-    annualFee: 28800,
-    facilities: ["Library", "Transport", "Smart Classroom", "Playground"],
-    categories: ["sports"],
-    lat: 25.4763,
-    lng: 80.3398
-  }
-];
+    isVerified: true,
+    status: "approved",
+    createdAt: "2024-02-15",
+  },
+]
 
-export const boards = ["CBSE", "ICSE", "UP Board", "IB", "IGCSE"];
-export const facilities = ["Library", "Labs", "Hostel", "Transport", "Smart Classroom", "CCTV", "Playground", "Auditorium"];
+// ─── Backward-Compatible Aliases ─────────────────────────────────────────────
+// Keep old import names working across the codebase.
+
+export const schools = mockSchools
+export const targetCities = TARGET_CITIES
+export const boards = BOARDS
+export const facilities: string[] = [
+  "Library",
+  "Labs",
+  "Hostel",
+  "Transport",
+  "Smart Classroom",
+  "WiFi",
+  "CCTV",
+  "Sports Ground",
+  "Swimming Pool",
+  "Auditorium",
+  "Cafeteria",
+  "Medical Room",
+]
+
+// ─── Helper Functions ─────────────────────────────────────────────────────────
+
+export function getSchoolsByCity(citySlug: string): School[] {
+  return mockSchools.filter(
+    (s) => s.citySlug === citySlug && s.status === "approved"
+  )
+}
+
+export function getSchoolBySlug(slug: string): School | undefined {
+  return mockSchools.find((s) => s.slug === slug)
+}
+
+export function getFeaturedSchools(): School[] {
+  return mockSchools.filter((s) => s.isFeatured && s.status === "approved")
+}
+
+export function getAdmissionOpenSchools(): School[] {
+  return mockSchools.filter((s) => s.admissionOpen && s.status === "approved")
+}
+
+export function filterSchools(filters: {
+  citySlug?: string
+  board?: Board
+  gender?: Gender
+  feeRange?: FeeRange
+  facilities?: (keyof SchoolFacilities)[]
+  specialFocus?: SpecialFocus
+  q?: string
+}): School[] {
+  return mockSchools.filter((school) => {
+    if (school.status !== "approved") return false
+    if (filters.citySlug && school.citySlug !== filters.citySlug) return false
+    if (filters.board && school.board !== filters.board) return false
+    if (filters.gender && school.gender !== filters.gender) return false
+    if (filters.feeRange && school.feeRange !== filters.feeRange) return false
+    if (
+      filters.specialFocus &&
+      !school.specialFocus.includes(filters.specialFocus)
+    )
+      return false
+    if (filters.facilities?.length) {
+      const hasAll = filters.facilities.every((f) => school.facilities[f])
+      if (!hasAll) return false
+    }
+    if (filters.q) {
+      const q = filters.q.toLowerCase()
+      const searchable =
+        `${school.name} ${school.area} ${school.board} ${school.description}`.toLowerCase()
+      if (!searchable.includes(q)) return false
+    }
+    return true
+  })
+}

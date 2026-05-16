@@ -15,7 +15,8 @@
     "prisma:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma"
   },
   "prisma": {
-    "schema": "src/prisma/schema.prisma"
+    "schema": "src/prisma/schema.prisma",
+    "seed": "tsx src/prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

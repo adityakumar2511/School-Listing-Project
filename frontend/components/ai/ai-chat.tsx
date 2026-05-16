@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { School } from "@/data/schools";
+import type { NormalizedSchool } from "@/lib/schools-api";
 import { normalizeSchool } from "@/lib/schools-api";
 import { formatCurrency } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ type ChatMessage = {
 };
 
 type Recommendation = {
-  school: School;
+  school: NormalizedSchool;
   reason?: string;
   matchScore?: string | number;
 };

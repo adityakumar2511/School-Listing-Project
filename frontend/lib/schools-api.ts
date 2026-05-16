@@ -1,4 +1,40 @@
-import type { School } from "@/data/schools";
+// NormalizedSchool is the flat display shape produced by normalizeSchool.
+// UI components (SchoolCard, AiChat, pages) all consume this type.
+export type NormalizedSchool = {
+  id: string
+  name: string
+  slug: string
+  city: string
+  citySlug: string
+  state: string
+  board: string
+  type: string
+  format: string
+  medium: string
+  description: string
+  logo: string
+  image: string
+  phone: string
+  whatsapp: string
+  address: string
+  establishedYear: number
+  affiliationNo: string
+  classes: string
+  admissionOpen: boolean
+  isFeatured: boolean
+  monthlyFee: number
+  annualFee: number
+  admissionFee?: number
+  transportFee?: number
+  hostelFee?: number
+  examFee?: number
+  facilities: string[]
+  categories: string[]
+  lat: number
+  lng: number
+  gallery?: string[]
+  principalName?: string
+}
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
@@ -10,7 +46,7 @@ export type ApiPagination = {
 };
 
 export type SchoolsListResponse = {
-  data: School[];
+  data: NormalizedSchool[];
   pagination: ApiPagination;
 };
 
@@ -102,7 +138,7 @@ type RawSchool = {
   lng?: number;
 };
 
-export function normalizeSchool(raw: unknown): School {
+export function normalizeSchool(raw: unknown): NormalizedSchool {
   const school = raw as RawSchool;
   const city = school.city;
   const board = school.board;
@@ -151,11 +187,10 @@ export function normalizeSchool(raw: unknown): School {
     hostelFee: fees.hostelFee ?? undefined,
     examFee: fees.examFee,
     facilities,
-    categories: school.categories ?? sections.map((section) => section.sectionType).filter(Boolean) as string[],
+    categories: school.categories ?? (sections.map((section) => section.sectionType).filter(Boolean) as string[]),
     lat: address.lat ?? school.lat ?? 0,
     lng: address.lng ?? school.lng ?? 0,
     gallery: school.gallery?.map((item) => item.cloudinaryUrl).filter(Boolean) as string[] | undefined,
-    raw
   };
 }
 
@@ -219,7 +254,7 @@ export async function fetchSchoolsList(params: SchoolQueryParams): Promise<Schoo
   }
 }
 
-export async function fetchSchoolBySlug(slug: string): Promise<School | null> {
+export async function fetchSchoolBySlug(slug: string): Promise<NormalizedSchool | null> {
   try {
     const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 60 } });
     if (response.status === 404) return null;

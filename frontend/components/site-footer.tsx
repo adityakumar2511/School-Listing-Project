@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { targetCities } from "@/data/schools";
+import { TARGET_CITIES } from "@/data/schools";
 
 export function SiteFooter() {
   return (
@@ -14,7 +14,7 @@ export function SiteFooter() {
         <div>
           <p className="text-sm font-semibold">Popular cities</p>
           <div className="mt-3 grid gap-2 text-sm text-[#55534e]">
-            {targetCities.map((city) => (
+            {TARGET_CITIES.map((city) => (
               <Link key={city.slug} href={`/schools/${city.slug}`} className="hover:text-[#185FA5]">
                 Schools in {city.name}
               </Link>

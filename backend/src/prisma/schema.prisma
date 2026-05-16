@@ -54,6 +54,7 @@ model User {
   pendingUpdates PendingUpdate[] @relation("SubmittedUpdates")
   reviewed       PendingUpdate[] @relation("ReviewedUpdates")
   approvalLogs   ApprovalLog[]
+  ownedSchools   School[]        @relation("SchoolOwner")
 
   @@map("users")
 }
@@ -110,6 +111,7 @@ model School {
   cityId      String       @map("city_id")
   stateId     String       @map("state_id")
   boardId     String       @map("board_id")
+  ownerId     String?      @map("owner_id")
   type        String
   medium      String
   description String
@@ -119,6 +121,7 @@ model School {
 
   city              City              @relation(fields: [cityId], references: [id])
   board             Board             @relation(fields: [boardId], references: [id])
+  owner             User?             @relation("SchoolOwner", fields: [ownerId], references: [id])
   details           SchoolDetails?
   address           SchoolAddress?
   academics         SchoolAcademics?
@@ -364,4 +367,47 @@ model SeoPage {
   customContent     String? @map("custom_content")
 
   @@map("seo_pages")
+}
+
+enum AuditAction {
+  SCHOOL_VERIFIED
+  SCHOOL_REJECTED
+  SCHOOL_EDITED
+  SCHOOL_DELETED
+  SCHOOL_FEATURED_TOGGLED
+  SCHOOL_CREATED
+  USER_DEACTIVATED
+  USER_REACTIVATED
+  USER_ROLE_CHANGED
+  TEAM_MEMBER_CREATED
+  TEAM_MEMBER_DEACTIVATED
+  TEAM_MEMBER_PERMISSIONS_UPDATED
+  INQUIRY_STATUS_CHANGED
+  INQUIRY_DELETED
+  ADMIN_LOGIN
+  ADMIN_LOGOUT
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  actorId       String      @map("actor_id")
+  actorEmail    String?     @map("actor_email")
+  actorRole     String      @map("actor_role")
+  actorTeamRole String?     @map("actor_team_role")
+  action        AuditAction
+  targetType    String      @map("target_type")
+  targetId      String      @map("target_id")
+  targetName    String?     @map("target_name")
+  previousData  Json?       @map("previous_data")
+  newData       Json?       @map("new_data")
+  ipAddress     String?     @map("ip_address")
+  userAgent     String?     @map("user_agent")
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

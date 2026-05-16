@@ -2,6 +2,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// ── ADMIN CREDENTIALS ─────────────────────────────────────────────────────────
+// Replace with your real phone number BEFORE running `npm run seed`.
+// This is the phone used to log in via OTP at /auth/parent/login.
+// Must include country code, e.g. "+919876543210".
+const ADMIN_PHONE = "+91XXXXXXXXXX";
+const ADMIN_NAME = "SchoolSetu Admin";
+
 const GALLERY_IMAGES = [
   "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
@@ -448,6 +455,13 @@ async function upsertSchool(seed: SchoolSeed, stateId: string) {
 }
 
 async function main() {
+  // ── Admin user ─────────────────────────────────────────────────────────────
+  await prisma.user.upsert({
+    where: { phone: ADMIN_PHONE },
+    update: { name: ADMIN_NAME, role: "admin" },
+    create: { phone: ADMIN_PHONE, name: ADMIN_NAME, role: "admin" },
+  });
+
   const state = await prisma.state.upsert({
     where: { slug: stateSeed.slug },
     update: { name: stateSeed.name },
@@ -482,7 +496,20 @@ async function main() {
     await upsertSchool(seed, state.id);
   }
 
-  console.log("Seed completed: 5 cities, 5 boards, 13 facilities, 7 approved schools.");
+  console.log("\n────────────────────────────────────────────────────────────");
+  console.log("  ✓ Seed completed");
+  console.log("    5 cities, 5 boards, 13 facilities, 7 approved schools");
+  console.log("────────────────────────────────────────────────────────────");
+  console.log("  ADMIN LOGIN");
+  console.log(`    Phone : ${ADMIN_PHONE}`);
+  console.log(`    Name  : ${ADMIN_NAME}`);
+  console.log("    URL   : http://localhost:3000/auth/parent/login");
+  console.log("    Flow  : Enter phone → receive OTP → verify → /admin");
+  if (ADMIN_PHONE.includes("X")) {
+    console.log("\n  ⚠  WARNING: Replace ADMIN_PHONE in seed.ts with a real");
+    console.log("     number before you can log in. Re-run `npm run seed`.");
+  }
+  console.log("────────────────────────────────────────────────────────────\n");
 }
 
 main()

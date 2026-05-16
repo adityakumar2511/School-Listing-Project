@@ -1,39 +1,37 @@
 # SchoolSetu Frontend Documentation
 
-This document explains the Next.js frontend for SchoolSetu. It is written for developers who need to understand the current implementation, route behavior, component contracts, design system, state, data fetching, and known gaps.
+This document explains the Next.js frontend for SchoolSetu. It covers the current implementation, route behavior, component contracts, design system, state, data fetching, and known gaps.
 
 ## Purpose
 
-The frontend is the parent-facing and operator-facing web application for SchoolSetu. It lets parents discover schools in Tier-2 and Tier-3 Indian cities, browse school detail pages, compare up to three schools, request admission inquiries, and use an AI recommendation assistant. It also contains early shells for parent, school, and admin dashboards.
-
-The main users are:
+The frontend is the parent-facing and operator-facing web application for SchoolSetu. It lets parents discover schools in Tier-2 and Tier-3 Indian cities, browse school detail pages, compare up to three schools, request admission inquiries, and use an AI recommendation assistant. It also contains admin and dashboard shells.
 
 | User | Frontend experience |
 | --- | --- |
-| Parents | Search `/schools`, inspect `/schools/[slug]`, compare schools, use `/ai-recommend`, and start admission inquiries. |
-| Schools | Visit `/for-schools`, register/login, and eventually manage `/school/dashboard`. |
-| Platform admins | Use `/admin` and `/admin/[section]` shells for moderation and operations once backend workflows are completed. |
+| Parents | Search `/schools/[city]`, inspect `/schools/[slug]`, compare schools, use `/ai-recommend`, start admission inquiries via WhatsApp or an inline form. |
+| Schools | Visit `/for-schools`, register/login at `/auth/school/login`, and eventually manage `/school/dashboard`. |
+| Platform admins | Use `/admin` and `/admin/audit-logs` for operations and audit review once backend workflows are complete. |
 
-## Tech Stack Deep Dive
+## Tech Stack
 
-| Package | Current version range | Why it was chosen |
+| Package | Version range | Why it was chosen |
 | --- | --- | --- |
-| `next` | `^16.0.3` | App Router gives SchoolSetu SSR/SSG, route-level metadata, static city/board/category SEO pages, and server/client component boundaries. |
+| `next` | `^16.0.3` | App Router gives SSR/SSG, route-level metadata, static SEO pages, server/client component boundaries. |
 | `react`, `react-dom` | `^19.2.0` | Core UI layer for cards, forms, chat, dashboards, and layouts. |
-| `typescript` | `^5.9.3` | Keeps route params, school data, component props, and API normalization safer. |
-| `tailwindcss` | `^4.1.17` | Token-driven styling from `app/globals.css`, responsive layout primitives, and fast UI iteration. |
-| `@tanstack/react-query` | `^5.90.10` | Server-state lifecycle for school listings: loading, placeholder data, refetching, and error-friendly fetch wrappers. |
-| `zustand` | `^5.0.8` | Small client store for the compare shortlist without app-wide boilerplate. |
+| `typescript` | `^5.9.3` | Type-safe route params, school data shapes, component props, and API normalization. |
+| `tailwindcss` | `^4.1.17` | Token-driven styling from `globals.css`, responsive layout primitives, fast UI iteration. |
+| `react-icons` | latest | Feather (`fi`), Material (`md`), and Heroicons (`hi`) icon sets. Replaces all emojis in UI. |
+| `@tanstack/react-query` | `^5.90.10` | Server-state lifecycle for school listings: loading, placeholder data, refetching, error handling. |
+| `zustand` | `^5.0.8` | Small client store for the compare shortlist. |
 | `framer-motion` | `^12.23.24` | Lightweight animation for AI chat messages. |
-| `zod` | `^4.1.12` | Runtime validation schemas, currently used in `components/inquiry/inquiry-form.tsx`. |
-| `react-hook-form` | `^7.66.0` | Efficient form state with minimal rerenders and easy Zod integration. |
+| `zod` | `^4.1.12` | Runtime validation schemas for inquiry and auth forms. |
+| `react-hook-form` | `^7.66.0` | Efficient form state with minimal rerenders and Zod integration. |
 | `@hookform/resolvers` | `^5.2.2` | Bridges Zod schemas into React Hook Form. |
-| `lucide-react` | `^0.554.0` | Consistent icon set for navigation, cards, filters, facilities, and actions. |
+| `lucide-react` | `^0.554.0` | Icon set used in `inquiry-form.tsx` (CheckCircle2, Loader2, Send, AlertTriangle). |
 | `class-variance-authority` | `^0.7.1` | Variant system for the shared `Button`. |
-| `clsx`, `tailwind-merge` | `^2.1.1`, `^3.4.0` | Safe class composition through `lib/utils.ts`. |
-| `next-auth` | `^4.24.11` | Installed for planned Auth.js/Google OAuth integration. It is not fully wired yet. |
-| `next-seo` | `^7.0.1` | Installed for future SEO helpers. Current SEO uses App Router `metadata` and `generateMetadata()`. |
-| `@radix-ui/react-slot` | `^1.2.4` | Enables `Button asChild` so links can use button styling without invalid nested elements. |
+| `clsx`, `tailwind-merge` | latest | Safe class composition through `lib/utils.ts`. |
+| `next-auth` | `^4.24.11` | Installed for planned Google OAuth integration. Not yet wired. |
+| `@radix-ui/react-slot` | `^1.2.4` | Enables `Button asChild` for link-as-button without nested element issues. |
 
 ## Complete File Structure
 
@@ -42,9 +40,7 @@ frontend/
 |-- Frontend.md
 |-- package.json
 |-- tsconfig.json
-|-- tsconfig.tsbuildinfo
 |-- next.config.ts
-|-- next-env.d.ts
 |-- postcss.config.mjs
 |-- eslint.config.mjs
 |-- public/
@@ -52,7 +48,8 @@ frontend/
 |-- data/
 |   |-- schools.ts
 |-- lib/
-|   |-- api.ts
+|   |-- auth-token.ts
+|   |-- schools-api.ts
 |   |-- utils.ts
 |-- store/
 |   |-- compare-store.ts
@@ -62,6 +59,8 @@ frontend/
 |   |-- inquiry/
 |   |   |-- inquiry-form.tsx
 |   |-- schools/
+|   |   |-- hero-search.tsx
+|   |   |-- mobile-sticky-bar.tsx
 |   |   |-- school-card.tsx
 |   |   |-- school-inquiry-cta.tsx
 |   |   |-- search-panel.tsx
@@ -75,326 +74,240 @@ frontend/
 |-- app/
     |-- globals.css
     |-- layout.tsx
-    |-- admin/page.tsx
-    |-- admin/[section]/page.tsx
-    |-- auth/login/page.tsx
-    |-- auth/register/page.tsx
-    |-- auth/verify-otp/page.tsx
+    |-- admin/
+    |   |-- page.tsx
+    |   |-- audit-logs/page.tsx
+    |   |-- [section]/page.tsx
     |-- dashboard/page.tsx
     |-- school/dashboard/page.tsx
-    |-- (public)/page.tsx
-    |-- (public)/about/page.tsx
-    |-- (public)/ai-recommend/page.tsx
-    |-- (public)/blog/page.tsx
-    |-- (public)/compare/page.tsx
-    |-- (public)/contact/page.tsx
-    |-- (public)/for-schools/page.tsx
-    |-- (public)/privacy-policy/page.tsx
-    |-- (public)/terms-of-service/page.tsx
-    |-- (public)/schools/page.tsx
-    |-- (public)/schools/schools-listing-client.tsx
-    |-- (public)/schools/[slug]/page.tsx
-    |-- (public)/schools/board/[board]/page.tsx
-    |-- (public)/schools/category/[category]/page.tsx
-    |-- (public)/schools/state/[state]/page.tsx
+    |-- (public)/
+        |-- page.tsx
+        |-- about/page.tsx
+        |-- ai-recommend/page.tsx
+        |-- auth/
+        |   |-- login/page.tsx
+        |   |-- parent/login/page.tsx
+        |   |-- parent/login/parent-login-form.tsx
+        |   |-- school/login/page.tsx
+        |   |-- school/login/school-login-form.tsx
+        |   |-- register/page.tsx
+        |   |-- verify-otp/page.tsx
+        |-- blog/
+        |   |-- page.tsx
+        |   |-- [slug]/page.tsx
+        |-- compare/page.tsx
+        |-- contact/page.tsx
+        |-- for-schools/page.tsx
+        |-- privacy-policy/page.tsx
+        |-- terms-of-service/page.tsx
+        |-- schools/
+            |-- page.tsx
+            |-- schools-listing-client.tsx
+            |-- [slug]/page.tsx
+            |-- board/[board]/page.tsx
+            |-- category/[category]/page.tsx
+            |-- state/[state]/page.tsx
 ```
 
 ### File explanations
 
 | File or folder | What it contains and does |
 | --- | --- |
-| `package.json` | Frontend scripts and dependencies. `dev`, `build`, `start`, `lint`, and `typecheck` are defined here. |
-| `tsconfig.json` | TypeScript configuration with `@/*` path alias and Next.js plugin. |
-| `tsconfig.tsbuildinfo` | Incremental TypeScript cache generated by `tsc`. |
-| `next.config.ts` | Next config. Sets Turbopack root to monorepo parent and allows image hosts `images.unsplash.com` and `res.cloudinary.com`. |
-| `next-env.d.ts` | Next.js TypeScript environment declarations. |
-| `postcss.config.mjs` | PostCSS config for Tailwind CSS 4. |
-| `eslint.config.mjs` | ESLint flat config for Next and TypeScript. |
-| `public/school-logo.svg` | Default school logo used when a listing does not have a custom logo. |
-| `data/schools.ts` | Local `School` type, target cities, mock schools, boards, and facilities. Used for static pages and API fallback. |
-| `lib/api.ts` | Frontend school API helper. Reads `NEXT_PUBLIC_API_URL` on the client and falls back to `data/schools.ts`. |
+| `data/schools.ts` | Core `School` type, `NormalizedSchool` alias, typed constants (`BOARDS`, `TARGET_CITIES`, `SCHOOL_TYPES`, `GENDERS`, `MEDIUMS`, `FEE_RANGES`, `SPECIAL_FOCUS_OPTIONS`), 5 detailed mock schools, and helper functions: `getSchoolsByCity`, `getSchoolBySlug`, `getFeaturedSchools`, `getAdmissionOpenSchools`, `filterSchools`. |
+| `lib/auth-token.ts` | `getAuthToken`, `setAuthToken`, `clearAuthToken`, and `authHeaders()` using localStorage key `schoolsetu_token`. All token operations for API calls. |
+| `lib/schools-api.ts` | `NormalizedSchool` type (flattened school shape for UI), `normalizeSchool` function, and API fetchers: `fetchSchoolsList`, `fetchSchoolBySlug`. Used by all school-rendering components. |
 | `lib/utils.ts` | `cn()` class merging helper and `formatCurrency()` for INR formatting. |
-| `store/compare-store.ts` | Zustand compare store with `selectedIds`, `toggleSchool`, and `clear`. Limits compare selection to three schools. |
-| `components/providers.tsx` | Client wrapper that creates a TanStack `QueryClient` with 60-second stale time and disabled window-focus refetch. |
-| `components/site-header.tsx` | Sticky top navigation with SchoolSetu brand, public nav links, login CTA, and mobile menu icon placeholder. |
+| `store/compare-store.ts` | Zustand compare store with `selectedIds`, `toggleSchool`, and `clear`. Limits selection to three schools. |
+| `components/providers.tsx` | `QueryClientProvider` with `staleTime: 60_000` and `refetchOnWindowFocus: false`. |
+| `components/site-header.tsx` | **Client component.** Sticky navigation with brand, public nav links, login CTA. Mobile hamburger menu with slide-down drawer, closes on route change or outside click. |
 | `components/site-footer.tsx` | Footer with brand copy, target city links, and company links. |
-| `components/ui/button.tsx` | Shared button primitive with variants `default`, `amber`, `outline`, `ghost` and sizes `default`, `sm`, `lg`. Supports `asChild`. |
-| `components/ui/badge.tsx` | Shared badge primitive with `blue`, `amber`, `success`, `neutral`, and `danger` tones. |
-| `components/ui/card.tsx` | Shared white card with 12px radius and border. |
-| `components/schools/school-card.tsx` | Card for a school listing. Renders image, badges, title, city, description, facilities, fee, compare toggle, WhatsApp, and inquiry link. |
-| `components/schools/search-panel.tsx` | Search/filter form for school listings and homepage. Exposes query, city, board, and optional facility select. Pushes URL search params. |
-| `components/schools/school-inquiry-cta.tsx` | Client CTA for school detail pages. Opens and scrolls to `InquiryForm`. |
-| `components/inquiry/inquiry-form.tsx` | Zod + React Hook Form admission inquiry form. Currently logs locally after validation. |
-| `components/ai/ai-chat.tsx` | AI recommendation chat UI. POSTs `{ preferences }` to `/api/ai/recommend`, shows typing indicator, error state, and recommendation cards. |
-| `app/layout.tsx` | Root layout, Google fonts, global metadata, providers, header, footer, and `<main>`. |
-| `app/globals.css` | Tailwind import, CSS variables for SchoolSetu tokens, theme mapping, body defaults, input inheritance, and `.container-shell`. |
-| `app/(public)` | Route group for public pages without changing URL paths. |
-| `app/auth` | Authentication pages outside the public route group. |
-| `app/dashboard` | Parent dashboard shell. |
-| `app/school/dashboard` | School dashboard shell. |
-| `app/admin` | Admin dashboard routes. |
+| `components/ui/button.tsx` | Button primitive with variants `default`, `amber`, `outline`, `ghost`. Supports `asChild`. |
+| `components/ui/badge.tsx` | Badge primitive with tones `blue`, `amber`, `success`, `neutral`, `danger`. |
+| `components/ui/card.tsx` | White card with `rounded-[12px]`, border, and padding. |
+| `components/schools/hero-search.tsx` | **Client component.** Homepage search bar with city badge. Pushes to `/schools/prayagraj?q=...` on submit or Enter. |
+| `components/schools/mobile-sticky-bar.tsx` | **Client component.** Fixed bottom bar on school detail pages (mobile only). Call, WhatsApp, and Inquiry buttons. |
+| `components/schools/school-card.tsx` | School listing card. Accepts `NormalizedSchool`. Renders image, badges, name, city, description, facilities, fee, compare toggle, WhatsApp link, inquiry link. |
+| `components/schools/search-panel.tsx` | Search/filter form. Pushes `/schools` query params via `useRouter`. |
+| `components/schools/school-inquiry-cta.tsx` | **Client component.** Sidebar CTA on school detail pages. WhatsApp button, divider "or", inline `InquiryForm` toggle. Shows admission open/closed badge and quick info strip. |
+| `components/inquiry/inquiry-form.tsx` | Zod + React Hook Form admission inquiry form. Authenticated API submission to `POST /api/inquiries`. Pre-fills phone from JWT. Handles success, duplicate (409), and error states. All labels in English. |
+| `components/ai/ai-chat.tsx` | AI recommendation chat UI. POSTs to `/api/ai/recommend`, shows typing indicator, error state, and recommendation cards. |
+| `app/layout.tsx` | Root layout with Google fonts, global metadata, providers, header, and footer. |
+| `app/globals.css` | Tailwind import, CSS design tokens, body defaults, and `.container-shell`. |
+| `app/admin/page.tsx` | Admin dashboard landing. Links to all admin sections including `audit-logs`. |
+| `app/admin/audit-logs/page.tsx` | **Client component.** Full audit log viewer for admins. Stats bar (4 cards), filter row (search/action/date range/reset), color-coded table, red-row highlight for `SCHOOL_DELETED`, "View Changes" button opens side-drawer diff viewer, CSV export. |
+| `app/admin/[section]/page.tsx` | Generic admin section shell. |
+| `app/(public)/page.tsx` | **Server component.** 8-section parent homepage. All icons via React Icons. No emojis. Data from `getFeaturedSchools()` and `getAdmissionOpenSchools()`. |
+| `app/(public)/auth/login/page.tsx` | Role selector. Two cards: "Parent Login" → `/auth/parent/login` and "School Admin Login" → `/auth/school/login`. |
+| `app/(public)/auth/parent/login/page.tsx` | Server component. Renders `ParentLoginForm`. |
+| `app/(public)/auth/parent/login/parent-login-form.tsx` | **Client component.** Google Sign-In button (with dev warning) and Phone OTP flow (send phone, enter 6-digit OTP, resend countdown). |
+| `app/(public)/auth/school/login/page.tsx` | Server component. Renders `SchoolLoginForm`. |
+| `app/(public)/auth/school/login/school-login-form.tsx` | **Client component.** Tab switcher: Email/Password (primary) and Phone OTP. Email field with show/hide password toggle. |
+| `app/(public)/auth/register/page.tsx` | Registration with parent/school role selection and OTP flow. |
+| `app/(public)/auth/verify-otp/page.tsx` | OTP verification with 6-input boxes, shake animation on error, resend timer. |
+| `app/(public)/blog/page.tsx` | Blog listing page with featured post and grid. English copy. |
+| `app/(public)/blog/[slug]/page.tsx` | 3 static SEO articles: admission guide, CBSE vs UP Board, hostel schools review. `generateStaticParams`, per-post `generateMetadata`. All content in professional English. |
+| `app/(public)/for-schools/page.tsx` | School-facing landing page. 5 sections: hero, benefits (4 cards with icons), how it works (3 steps), what's included (checklist), final CTA. |
+| `app/(public)/schools/schools-listing-client.tsx` | **Client component.** Sidebar filter panel + school grid. Filters: search text, board, gender, fee range, facilities, special focus. Sort: relevance, fee asc/desc, newest. Empty state with "No Schools Found". |
+| `app/(public)/schools/[slug]/page.tsx` | Dual-purpose server page. City slug → city header + stats strip + `SchoolsListingClient`. School slug → full 2-column detail layout (main column + sticky sidebar). JSON-LD for both. |
 
 ## Route Architecture
 
 ### Public routes
 
-| Route | File | What it renders | Data it needs | Key components |
-| --- | --- | --- | --- | --- |
-| `/` | `app/(public)/page.tsx` | Homepage for discovery, featured schools, city entry points, and AI CTA. | `data/schools.ts` mock data and target cities. | `SearchPanel`, `SchoolCard`, shared UI primitives. |
-| `/schools` | `app/(public)/schools/page.tsx` and `schools-listing-client.tsx` | Searchable school listing with query/city/board filters, pagination, skeleton, empty state. | `GET /api/schools` with `NEXT_PUBLIC_API_URL`; falls back to `data/schools.ts`. | `SearchPanel`, `SchoolCard`, `Button`. |
-| `/schools/[slug]` | `app/(public)/schools/[slug]/page.tsx` | Dual-purpose route. Checks city slugs first; city slugs render city listing, school slugs render detail page. | `GET /api/schools/:slug`, `GET /api/schools?city=...`, or local mock data. | `SchoolCard`, `SchoolInquiryCta`, `Badge`, `Card`, `Image`. |
-| `/schools/state/[state]` | `app/(public)/schools/state/[state]/page.tsx` | State SEO landing page. | Static/mock school data today; intended to use taxonomy API and `SeoPage`. | UI cards and links. |
-| `/schools/board/[board]` | `app/(public)/schools/board/[board]/page.tsx` | Board SEO landing page for board-specific discovery. | Static/mock school data today; intended API-backed board pages later. | `SchoolCard` or section cards depending on implementation. |
-| `/schools/category/[category]` | `app/(public)/schools/category/[category]/page.tsx` | Category SEO page such as sports, hostel, girls, IIT/NEET. | Mock/category filters today; intended API-backed category landing later. | School listing components. |
-| `/ai-recommend` | `app/(public)/ai-recommend/page.tsx` | AI school recommendation assistant page. | User input and `POST /api/ai/recommend`. | `AiChat`. |
-| `/compare` | `app/(public)/compare/page.tsx` | Compare experience for selected school ids. | Zustand `compare-store` and local school data. | `useCompareStore`, school data, cards/tables. |
-| `/blog` | `app/(public)/blog/page.tsx` | Blog/SEO content shell. | Static content today; intended `BlogPost` API later. | Cards and links. |
-| `/about` | `app/(public)/about/page.tsx` | Brand and platform explanation page. | Static content. | Shared layout/UI. |
-| `/contact` | `app/(public)/contact/page.tsx` | Contact information and contact CTA. | Static content today. | Shared UI. |
-| `/for-schools` | `app/(public)/for-schools/page.tsx` | School onboarding and value proposition page. | Static content today. | CTA buttons, cards. |
-| `/privacy-policy` | `app/(public)/privacy-policy/page.tsx` | Privacy policy. | Static legal content. | Text layout. |
-| `/terms-of-service` | `app/(public)/terms-of-service/page.tsx` | Terms of service. | Static legal content. | Text layout. |
+| Route | What it renders | Key components |
+| --- | --- | --- |
+| `/` | 8-section homepage for discovery. | `HeroSearch`, `SchoolCard`, guide cards, category grid. |
+| `/schools/[city]` | City listing page with stats strip + client filters. | `SchoolsListingClient`, JSON-LD ItemList. |
+| `/schools/[slug]` | School detail: header, quick stats, actions, about, fees, facilities, programs, nearby schools. | `SchoolInquiryCta`, `MobileStickyBar`, `Badge`. |
+| `/schools/board/[board]` | Board SEO landing. | School cards. |
+| `/schools/category/[category]` | Category SEO landing. | School cards. |
+| `/schools/state/[state]` | State SEO landing. | School cards. |
+| `/ai-recommend` | AI recommendation assistant. | `AiChat`. |
+| `/compare` | Compare up to 3 schools. | `useCompareStore`, school data. |
+| `/blog` | Blog listing with featured post. | `Badge`, post cards. |
+| `/blog/[slug]` | Static article with structured content. | `ArticleH2`, `ArticleP`, `ArticleUl`, `ArticleTable`, `ArticleCta`. |
+| `/for-schools` | School onboarding value proposition. | React Icons, CTA buttons. |
+| `/about`, `/contact`, `/privacy-policy`, `/terms-of-service` | Static content pages. | Shared layout. |
 
 ### Auth routes
 
-| Route | File | What it renders | Data it needs | Notes |
-| --- | --- | --- | --- | --- |
-| `/auth/login` | `app/auth/login/page.tsx` | Login screen for parent/school/admin entry. | Intended to call OTP or Auth.js. | Google OAuth is pending. |
-| `/auth/register` | `app/auth/register/page.tsx` | Registration screen. | Intended to call auth and school registration APIs. | Production flow needs role-aware onboarding. |
-| `/auth/verify-otp` | `app/auth/verify-otp/page.tsx` | OTP verification screen. | `POST /api/auth/verify-otp`. | Should store returned JWT for protected APIs. |
+| Route | What it renders |
+| --- | --- |
+| `/auth/login` | Role selector (parent or school admin). |
+| `/auth/parent/login` | Parent login: Google Sign-In + Phone OTP. |
+| `/auth/school/login` | School admin login: Email/Password + Phone OTP. |
+| `/auth/register` | Registration with role selection. |
+| `/auth/verify-otp` | OTP entry with 6-box inputs and resend timer. |
 
-### Dashboard routes
+### Dashboard & admin routes
 
-| Route | File | What it renders | Data it needs | Notes |
-| --- | --- | --- | --- | --- |
-| `/dashboard` | `app/dashboard/page.tsx` | Parent dashboard shell. | Parent inquiries and shortlist later. | Protected route behavior pending. |
-| `/school/dashboard` | `app/school/dashboard/page.tsx` | School dashboard shell. | School profile, inquiries, leads, payments later. | Protected route behavior pending. |
-| `/admin` | `app/admin/page.tsx` | Admin overview shell. | Admin stats later. | Should require admin auth in production. |
-| `/admin/[section]` | `app/admin/[section]/page.tsx` | Admin subsection shell. | Moderation, schools, payments, SEO data later. | Should connect to `/api/admin/*`. |
+| Route | What it renders |
+| --- | --- |
+| `/dashboard` | Parent dashboard shell. |
+| `/school/dashboard` | School dashboard shell. |
+| `/admin` | Admin overview with section links. |
+| `/admin/audit-logs` | Full audit log viewer (stats, filters, table, diff drawer, CSV export). |
+| `/admin/[section]` | Generic admin section shell. |
 
 ## Component Documentation
 
-### `components/schools/school-card.tsx`
+### `components/schools/hero-search.tsx`
 
-Props:
+Client component. Controlled input with `useState`. On submit or Enter keypress, pushes to `/schools/prayagraj?q=<query>`. Shows `📍 Prayagraj` badge and a "Search Schools" button.
 
-```ts
-{ school: School }
-```
+### `components/schools/mobile-sticky-bar.tsx`
 
-Renders:
-
-- Cover image via `next/image`.
-- Featured and admission status badges.
-- Board, type, and format badges.
-- School name linked to `/schools/${school.slug}`.
-- City, description, first four facilities, monthly fee.
-- Compare button connected to `useCompareStore`.
-- WhatsApp link using `school.whatsapp`.
-- Inquiry link to `/schools/${school.slug}#inquiry`.
-
-Important behavior:
-
-- Compare state is client-side only.
-- Store keeps the last three selected school ids.
-- The card expects a normalized `School` shape from `data/schools.ts`.
-
-### `components/schools/search-panel.tsx`
-
-Props:
-
-```ts
-type SearchPanelProps = {
-  showFacility?: boolean;
-};
-```
-
-Filters:
-
-- `q`: free-text search.
-- `city`: city slug from `targetCities`.
-- `board`: lower/underscore board value from `boards`.
-- `facility`: optional facility slug from `facilities`.
-
-Events:
-
-- Submits a form.
-- Builds `URLSearchParams`.
-- Pushes to `/schools?...` using `useRouter`.
-- If no params exist, pushes `/schools`.
-
-Usage:
-
-- Homepage can show facility filtering.
-- `/schools` passes `showFacility={false}` to match the listing requirements of query, city, and board only.
+Client component. Fixed bottom bar (`fixed bottom-0`), hidden on `md+`. Three buttons: Call (tel link), WhatsApp (wa.me link), Inquiry (scroll to `#inquiry`).
 
 ### `components/schools/school-inquiry-cta.tsx`
 
-Props:
+Props: `{ schoolId, schoolName, phone, whatsapp, board, monthlyFee, classesFrom, classesTo, admissionOpen, admissionClasses }`.
 
-```ts
-{ schoolName: string }
-```
-
-Behavior:
-
-- Renders an admissions card.
-- Amber `Send Admission Inquiry` button toggles the form open.
-- Uses `requestAnimationFrame` and `scrollIntoView` so the form is visible after opening.
-- Provides a close button.
-- Renders `InquiryForm` only after the CTA is clicked.
+Renders:
+- Header with "Send Admission Inquiry" and admission open/closed badge.
+- Quick info strip: Monthly Fee, Board, Classes.
+- Full-width WhatsApp button.
+- Divider "or".
+- "Fill Inquiry Form" toggle button — mounts `InquiryForm` inline.
+- Phone call link below.
 
 ### `components/inquiry/inquiry-form.tsx`
 
-Props:
-
-```ts
-{ schoolName: string }
-```
+Props: `{ schoolId, schoolName, admissionClasses?, onSuccess? }`.
 
 Fields:
+| Field | Label | Validation |
+| --- | --- | --- |
+| `parentName` | Parent's Name | Required, min 2 chars. |
+| `phone` | Phone number (WhatsApp) | Required, 10 digits. Pre-filled from JWT. |
+| `childName` | Child's Name | Required, min 2 chars. |
+| `classApplying` | Class Applying For | Required. |
+| `message` | Message (optional) | Max 300 chars. |
 
-| Field | Validation |
-| --- | --- |
-| `parentName` | Required, minimum 2 chars. |
-| `phone` | Required, minimum 10 chars. |
-| `studentName` | Required, minimum 2 chars. |
-| `classApplying` | Required, minimum 1 char. |
-| `message` | Optional, max 500 chars. |
+States: unauthenticated (login prompt), success, duplicate 409, generic error, form.
 
-Submission flow:
-
-1. `react-hook-form` manages form state.
-2. `zodResolver(inquirySchema)` validates inputs.
-3. `onSubmit` currently logs `{ ...values, schoolName }`.
-4. Success message says the inquiry was captured locally.
-
-Production next step:
-
-- Map fields to backend inquiry API: `studentName` -> `childName`, `classApplying` -> `grade`, include `schoolId`, and send `Authorization: Bearer <token>` to `POST /api/inquiries`.
+Submission: `POST /api/inquiries` with `authHeaders()`.
 
 ### `components/ai/ai-chat.tsx`
 
-Flow:
-
-1. User types preferences such as `Class 8, Prayagraj, CBSE, budget 5000, transport needed`.
-2. Component appends a user message.
-3. Component POSTs to `${NEXT_PUBLIC_API_URL}/api/ai/recommend`, or relative `/api/ai/recommend` if no base URL is configured.
-4. Backend returns recommendation data.
-5. `extractRecommendations()` normalizes `recommendations`, `schools`, or `recommendedSchools` arrays.
-6. UI displays recommendation cards, not raw JSON.
-
-States:
-
-- Welcome assistant message.
-- User message bubble.
-- Typing indicator with animated blue dots.
-- Error alert when API call fails.
-- Assistant response with formatted recommendation cards.
-
-Recommendation card includes:
-
-- Board badge.
-- Optional match score badge.
-- Admission status badge.
-- School name.
-- City/classes/medium row.
-- Reason or description.
-- Facility chips.
-- Monthly fee and `View school` CTA.
+POSTs `{ preferences }` to `${NEXT_PUBLIC_API_URL}/api/ai/recommend`. Shows typing indicator, error alert, and recommendation cards with board badge, school name, city, classes, fee, and "View school" CTA.
 
 ### `components/ui/button.tsx`
 
-Variants:
-
-| Variant | Classes | Use |
-| --- | --- | --- |
-| `default` | Blue background, white text | Primary actions that are not admission CTAs. |
-| `amber` | Amber background, dark amber text | Admission, lead, and conversion CTAs. |
-| `outline` | White with border | Secondary actions such as pagination and WhatsApp. |
-| `ghost` | Blue text with light hover | Low-emphasis actions. |
-
-Sizes:
-
-- `default`: `h-11 px-5`
-- `sm`: `h-9 px-3`
-- `lg`: `h-12 px-6`
+Variants: `default` (blue), `amber` (CTA), `outline` (secondary), `ghost` (tertiary).
+Sizes: `default` (`h-11 px-5`), `sm` (`h-9 px-3`), `lg` (`h-12 px-6`).
+Supports `asChild` via Radix Slot.
 
 ### `components/ui/badge.tsx`
 
-Tones:
-
-| Tone | Use |
-| --- | --- |
-| `blue` | Board and informational labels. |
-| `amber` | Featured or match score labels. |
-| `success` | Admission open, approved, positive states. |
-| `neutral` | Type/format labels. |
-| `danger` | Admission closed or errors. |
-
-### `components/ui/card.tsx`
-
-Shared wrapper:
-
-- `rounded-[12px]`
-- `border border-[#D3D1C7]`
-- `bg-white`
-- `p-5`
-
-Use cards for repeated school items, dashboards, forms, and grouped information. Avoid nesting cards inside cards.
+Tones: `blue` (board/info), `amber` (featured), `success` (admission open), `neutral` (type), `danger` (admission closed/error).
 
 ### `components/site-header.tsx`
 
-Navigation links:
+Client component. Hamburger button visible on mobile. `useState` for menu open state. `useEffect` with `useRef` to close on outside click. `usePathname` to close on route change. Desktop nav links: Schools, AI Advisor, Compare, For Schools.
 
-- `/schools`
-- `/ai-recommend`
-- `/compare`
-- `/for-schools`
+### `app/admin/audit-logs/page.tsx`
 
-Auth state:
+Action badge config (`ACTION_CONFIG`) maps each `AuditAction` to a label, color, icon, and optional `danger: true` flag. Danger rows get `bg-red-50 border-l-4 border-red-400`. `DiffDrawer` component shows changed keys only in a red/green side-by-side diff. CSV export fetches all matching records and triggers a browser download.
 
-- Currently static. Login CTA links to `/auth/login`.
-- Mobile menu icon is present but no drawer behavior is implemented.
+## Data Layer
 
-### `components/site-footer.tsx`
+### `data/schools.ts`
 
-Footer links:
+The primary mock data source used for static rendering, SSG, and fallback when the API is unreachable.
 
-- Popular city pages from `targetCities`.
-- Company links: About, Contact, Privacy Policy, Terms.
+Key exports:
+- `School` — full richly-typed school interface.
+- `BOARDS`, `TARGET_CITIES`, `SCHOOL_TYPES`, `GENDERS`, `MEDIUMS`, `FEE_RANGES`, `SPECIAL_FOCUS_OPTIONS` — typed constants.
+- `mockSchools` — 5 detailed Prayagraj schools.
+- `filterSchools(params)` — client-side filter function used by `SchoolsListingClient`.
+- `getFeaturedSchools()`, `getAdmissionOpenSchools()` — used by the homepage server component.
 
-### `components/providers.tsx`
+### `lib/schools-api.ts`
 
-Wraps the app with:
+`NormalizedSchool` is the single flattened type consumed by all UI components. Both API responses (nested Prisma) and mock school objects are passed through `normalizeSchool()` before rendering. This prevents shape drift as the backend evolves.
 
-- `QueryClientProvider`
-- `QueryClient` default options:
-  - `staleTime: 60_000`
-  - `refetchOnWindowFocus: false`
+```ts
+type NormalizedSchool = {
+  id: string; name: string; slug: string; city: string; citySlug: string;
+  board: string; type: string; classes: string; description: string;
+  image: string; phone: string; whatsapp: string; address: string;
+  monthlyFee: number; annualFee: number; admissionFee: number;
+  transportFee: number; hostelFee: number; admissionOpen: boolean;
+  isFeatured: boolean; facilities: string[]; establishedYear?: number;
+  affiliationNo?: string; medium: string | string[];
+};
+```
+
+### `lib/auth-token.ts`
+
+All API calls that require authentication use `authHeaders()`:
+
+```ts
+authHeaders() → { Authorization: "Bearer <token>", "Content-Type": "application/json" }
+```
+
+Token is stored in `localStorage` under key `schoolsetu_token`.
 
 ## Design System
 
-### Color tokens
-
-Defined in `app/globals.css`.
+### Color tokens (defined in `app/globals.css`)
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Background | `#F1EFE8` | Page background and chat surface. |
-| Text | `#2C2C2A` | Primary body text. |
-| Primary blue | `#185FA5` | Primary actions, icons, focus states, key labels. |
-| Dark blue | `#0C447C` | Headings and hover states. |
-| Deep blue | `#042C53` | Large page titles. |
-| Light blue | `#E6F1FB` | Informational chip backgrounds. |
-| Blue border/hover | `#85B7EB` | Hover border accents. |
+| Background | `#F1EFE8` | Page background, section fills. |
+| Text primary | `#2C2C2A` | Body text, card titles. |
+| Primary blue | `#185FA5` | Actions, icons, focus rings, key labels. |
+| Dark blue | `#0C447C` | Section headings, hover states. |
+| Deep blue | `#042C53` | Hero titles, admin headings. |
+| Light blue | `#E6F1FB` | Info chip backgrounds, hover fills. |
 | Amber CTA | `#EF9F27` | Admission and conversion CTAs. |
-| Amber light | `#FAEEDA` | Featured badges and highlight cards. |
+| Amber light | `#FAEEDA` | Featured badges, article CTAs. |
 | Amber dark | `#633806` | Text on amber surfaces. |
-| Border | `#D3D1C7` | Card, input, and section borders. |
-| Muted text | `#55534e`, `#888780` | Secondary copy and metadata. |
-| Success | `#3B6D11` on `#EAF3DE` | Admission open and positive states. |
-| Danger | `#A32D2D` on `#FCEBEB` | Errors and closed states. |
+| Border | `#D3D1C7` | Cards, inputs, section dividers. |
+| Muted text | `#55534e`, `#888780` | Secondary copy, metadata. |
+| Success | `#3B6D11` on `#EAF3DE` | Admission open, positive states. |
+| Danger | `#A32D2D` on `#FCEBEB` | Errors, admission closed. |
 
 ### Typography
 
@@ -403,52 +316,26 @@ Defined in `app/globals.css`.
 | Plus Jakarta Sans | `--font-plus-jakarta` | Headings, brand, card titles, page titles. |
 | Inter | `--font-inter` | Body, inputs, buttons, metadata, forms. |
 
-Usage rules:
+Usage: `font-heading` for page and section titles. Body font for operational UI. No viewport-scaled font sizes.
 
-- Use `font-heading` for page titles and section/card headings.
-- Use body font for operational UI and long text.
-- Keep card headings smaller than hero headings.
-- Avoid viewport-scaled font sizes; use Tailwind breakpoint sizes.
+### Layout
 
-### Card conventions
+- Page content: `.container-shell` — `min(1180px, calc(100vw - 32px))`.
+- Vertical rhythm: sections typically start with `py-16`.
+- School card grids: `md:grid-cols-2` or `lg:grid-cols-3`.
+- Admin/stat grids: `lg:grid-cols-4`.
 
-- Background: white.
-- Radius: `12px`.
-- Border: `#D3D1C7`.
-- Padding: usually `p-5`.
-- Shadows: subtle only, mostly on school listing cards and chat cards.
+### Icons
 
-### Button conventions
+All icons use `react-icons`. No emojis in UI text.
 
-- Primary blue: use for navigation-like or default app actions.
-- Amber CTA: use for admission inquiry, AI submit, and conversion points.
-- Outline: use for secondary actions and pagination.
-- Ghost: use sparingly for tertiary actions.
-
-### Badge conventions
-
-- Board type: `blue`.
-- Featured: `amber`.
-- Admission open: `success`.
-- Admission closed: `danger`.
-- Type/format: `neutral`.
-- Verified: should use `success` when added.
-
-### Spacing and layout
-
-- Page content uses `.container-shell`, defined as `min(1180px, calc(100vw - 32px))`.
-- Main page vertical rhythm usually starts with `py-10`.
-- Grids use `gap-5` or `gap-6`.
-- School card grids use `md:grid-cols-2`.
-- Dashboard/stat grids use responsive `sm:grid-cols-*` or `lg:grid-cols-*`.
+- `react-icons/fi` — Feather icons (Search, ArrowRight, Check, Edit, Trash, Download, etc.).
+- `react-icons/md` — Material icons (School, Science).
+- `react-icons/hi` — Heroicons outline (AcademicCap, OfficeBuilding, UserGroup, CurrencyRupee, DocumentText).
 
 ## State Management
 
-### Zustand compare store
-
-File: `store/compare-store.ts`
-
-State:
+### Zustand compare store (`store/compare-store.ts`)
 
 ```ts
 type CompareState = {
@@ -458,109 +345,68 @@ type CompareState = {
 };
 ```
 
-Behavior:
-
-- `selectedIds` stores selected school ids.
-- `toggleSchool(id)` removes an existing id or appends a new id.
-- New selections are sliced to the last three ids with `.slice(-3)`.
-- `clear()` resets the compare list.
-
-How school cards use it:
-
-- `SchoolCard` reads `selectedIds`.
-- It calls `toggleSchool(school.id)` from the Compare button.
-- Star icon fill changes to amber when selected.
+`toggleSchool` appends or removes an id; new selections sliced to `.slice(-3)`. `SchoolCard` reads `selectedIds` and calls `toggleSchool`.
 
 ## Data Fetching Strategy
 
 ### TanStack Query
 
-`components/providers.tsx` installs the query provider globally. The main TanStack Query consumer is:
+Global `QueryClient` with `staleTime: 60_000` and `refetchOnWindowFocus: false`.
 
-- `app/(public)/schools/schools-listing-client.tsx`
+`SchoolsListingClient` uses local `filterSchools()` from `data/schools.ts` with `useMemo` (client-side filtering, no async query needed for mock data). For API-backed listings, `fetchSchoolsList` from `lib/schools-api.ts` uses `NEXT_PUBLIC_API_URL`.
 
-Listing query behavior:
+### Fallback chain
 
-- Query key: `["schools", filters]`.
-- Query function: `fetchSchools(filters)`.
-- Uses `placeholderData: keepPreviousData` so pagination/filter transitions do not flash empty UI.
-- Shows skeleton while initial load is pending.
+1. `fetchSchoolBySlug` calls `GET /api/schools/:slug`.
+2. Falls back to `mockSchools.find(s => s.slug === slug)`.
+3. Both paths go through `normalizeSchool()` before rendering.
 
-### API calls and fallback
+### Audit log page fetching
 
-`lib/api.ts`:
-
-- Reads `NEXT_PUBLIC_API_URL`.
-- If configured and running client-side, calls `${API_URL}/api/schools`.
-- If unavailable, filters `data/schools.ts` locally.
-
-`schools-listing-client.tsx` and `[slug]/page.tsx` have their own normalization helpers because backend Prisma responses are nested differently from local mock `School` objects.
-
-Mock fallback rules:
-
-- School listing falls back to `data/schools.ts` when API is missing or request fails.
-- School detail falls back to `data/schools.ts`.
-- AI chat does not fabricate local recommendations; it displays an error when the AI endpoint fails.
+Uses `fetch` with `authHeaders()` directly (no TanStack Query). `fetchLogs` and `fetchStats` run in parallel on mount and when any filter changes. Stats are non-critical — their failure is silently swallowed.
 
 ## Forms
 
-The current pattern is:
+Pattern used across all forms:
 
-1. Define a Zod schema.
-2. Derive TypeScript type from schema with `z.infer`.
-3. Create a React Hook Form instance with `zodResolver`.
-4. Render validation errors next to inputs.
-5. Keep submit handler small.
+1. Define Zod schema.
+2. Derive TypeScript type with `z.infer`.
+3. Create React Hook Form instance with `zodResolver`.
+4. Render validation errors inline.
+5. Submit through `useMutation` or direct `fetch`.
 
-Example from `components/inquiry/inquiry-form.tsx`:
+Example (`inquiry-form.tsx`):
 
 ```ts
 const inquirySchema = z.object({
-  parentName: z.string().min(2, "Enter parent name"),
-  phone: z.string().min(10, "Enter a valid phone number"),
-  studentName: z.string().min(2, "Enter student name"),
-  classApplying: z.string().min(1, "Enter class"),
-  message: z.string().max(500).optional()
+  parentName: z.string().trim().min(2, "Enter your full name"),
+  phone: z.string().trim().regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
+  childName: z.string().trim().min(2, "Enter student's name"),
+  classApplying: z.string().min(1, "Select the class applying for"),
+  message: z.string().trim().max(300, "Message cannot exceed 300 characters").optional()
 });
 ```
 
-Production rule:
-
-- Any form that hits backend APIs should keep the same schema-first pattern and map UI field names to backend field names in one place.
-
 ## SEO Implementation
 
-Current SEO tools:
-
-- `app/layout.tsx` exports global `metadata` with title template, description, and `metadataBase`.
-- `app/(public)/schools/[slug]/page.tsx` exports `generateMetadata()` for city and school pages.
-- School detail pages include JSON-LD `School` schema through a `<script type="application/ld+json">`.
-- `generateStaticParams()` prebuilds mock school slugs and target city slugs.
-
-Dynamic SEO route strategy:
-
-- City pages: `/schools/[slug]` when slug matches a known city.
-- School pages: `/schools/[slug]` otherwise.
-- State pages: `/schools/state/[state]`.
-- Board pages: `/schools/board/[board]`.
-- Category pages: `/schools/category/[category]`.
-
-Dynamic OG tags:
-
-- Not fully implemented yet.
-- Add route-level `openGraph` metadata in `generateMetadata()` when production copy and images are ready.
+- `app/layout.tsx` — global `metadata` with title template and `metadataBase`.
+- `app/(public)/schools/[slug]/page.tsx` — `generateMetadata()` for city and school slugs.
+- `app/(public)/blog/[slug]/page.tsx` — `generateMetadata()` per article.
+- School detail pages: JSON-LD `School` schema.
+- City pages: JSON-LD `ItemList` schema.
+- `generateStaticParams()` on both `[slug]/page.tsx` files.
+- All metadata in professional English.
 
 ## Known Limitations and Next Steps
 
 | Limitation | Why it matters | Next step |
 | --- | --- | --- |
-| `/schools/[slug]` is dual-purpose | Next.js cannot support sibling dynamic routes like `/schools/[slug]` and `/schools/[city-slug]` at the same level. | Keep city-first slug matching and maintain unique city/school slugs. |
-| Mock data still powers several public pages | Early UI can render without backend, but content may diverge from database. | Centralize normalization and migrate static pages to backend/taxonomy APIs. |
-| Auth.js integration pending | Login/register screens exist, but Google OAuth is not wired. | Configure NextAuth providers and bridge backend JWT needs. |
-| Inquiry form is local-only | Parents can fill the form, but it does not yet create backend inquiries. | Wire to `POST /api/inquiries` after auth flow is complete. |
-| ISR configuration pending | SEO pages should update as schools change. | Add `revalidate` values and database-backed SEO content. |
-| `next lint` script is outdated for Next 16 | `npm run lint --workspace frontend` fails before linting. | Replace with `eslint .` in `frontend/package.json`. |
-| Admin dashboards are shells | Admin API stubs and frontend shells are not full moderation tools. | Connect admin pages to `PendingUpdate`, `ApprovalLog`, schools, and payments APIs. |
+| `schools/[slug]` is dual-purpose | Next.js cannot have sibling dynamic routes at the same path level. | Keep city-first slug matching and maintain unique city/school slugs. |
+| Auth.js integration pending | Parent login has Google button with dev warning box; school login uses email/password UI. Neither is fully wired to a production provider. | Configure NextAuth providers and bridge to backend JWT. |
+| Audit log page requires admin JWT | The page fetches from `authHeaders()` but there is no server-side redirect guard. | Add server-side session check or middleware redirect for non-admin users. |
+| Prisma AuditLog migration | `AuditLog` model exists in schema but the migration needs to be run against the hosted database. | Run `npx prisma migrate dev --name add_audit_log` when DB is accessible. |
+| ISR not configured | SEO pages use static generation with no revalidation interval. | Add `export const revalidate = 3600` to city/school pages. |
+| Admin dashboards are shells | Admin API routes exist; frontend shells are not connected moderation tools. | Connect to `PendingUpdate`, `ApprovalLog`, schools, and payments APIs. |
 
 ## Local Development Commands
 
@@ -568,8 +414,6 @@ Dynamic OG tags:
 npm run dev --workspace frontend
 npm run typecheck --workspace frontend
 npm run build --workspace frontend
-npm exec --workspace frontend eslint .
 ```
 
-The frontend usually runs at `http://localhost:3000`. If another Next dev server is already active, Next may use another port such as `3100`.
-
+The frontend runs at `http://localhost:3000`. Ensure `NEXT_PUBLIC_API_URL=http://localhost:4000` is set in `frontend/.env.local`.

@@ -1,166 +1,404 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { Suspense } from "react";
-import { ArrowRight, BrainCircuit, MapPin, ShieldCheck, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  FiSearch,
+  FiGitMerge,
+  FiMessageSquare,
+  FiCheck,
+  FiArrowRight,
+} from "react-icons/fi";
+import { MdSchool, MdScience } from "react-icons/md";
+import {
+  HiOutlineAcademicCap,
+  HiOutlineOfficeBuilding,
+  HiOutlineUserGroup,
+  HiOutlineCurrencyRupee,
+  HiOutlineDocumentText,
+} from "react-icons/hi";
+import { getFeaturedSchools, getAdmissionOpenSchools } from "@/data/schools";
 import { SchoolCard } from "@/components/schools/school-card";
-import { SearchPanel } from "@/components/schools/search-panel";
-import { targetCities } from "@/data/schools";
-import { fetchCities, fetchSchoolsList } from "@/lib/schools-api";
+import { HeroSearch } from "@/components/schools/hero-search";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { normalizeSchool } from "@/lib/schools-api";
 
-const categoryLinks = [
-  { label: "CBSE Schools", href: "/schools/board/cbse" },
-  { label: "IIT/NEET Schools", href: "/schools/category/iit-neet" },
-  { label: "Hostel Schools", href: "/schools/category/hostel" },
-  { label: "Sports Schools", href: "/schools/category/sports" }
+export const metadata: Metadata = {
+  title: "Schools in Prayagraj 2025 — Fees, Admission & Comparison | SchoolSetu",
+  description:
+    "Browse CBSE, ICSE, and UP Board schools in Prayagraj. Compare fees, explore hostel options, and send a direct WhatsApp inquiry — completely free for parents.",
+  keywords:
+    "schools in prayagraj, cbse schools prayagraj, school admission prayagraj 2025, best schools allahabad, up board schools prayagraj",
+  openGraph: {
+    title: "Schools in Prayagraj — SchoolSetu",
+    description: "Verified schools in Prayagraj — fees, board, and hostel options all in one place.",
+    url: "https://schoolsetu.in",
+    type: "website",
+  },
+};
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const featuredSchools = getFeaturedSchools().map(normalizeSchool);
+const admissionOpenSchools = getAdmissionOpenSchools().map(normalizeSchool);
+
+const heroStats = [
+  { value: "15+", label: "Schools Listed" },
+  { value: "4", label: "Boards Available" },
+  { value: "₹200", label: "Lowest Monthly Fee" },
+  { value: "Free", label: "For Parents Always" },
 ];
 
-const blogPlaceholders = [
-  { title: "How to choose a school in Tier-2 cities", excerpt: "Board, fees, commute, and safety checklist for parents." },
-  { title: "Admission documents parents forget", excerpt: "TC, Aadhaar, report cards, and hostel medical forms." },
-  { title: "CBSE vs ICSE in Uttar Pradesh", excerpt: "What changes for Class 9–12 and competitive exams." }
+const quickFilters = [
+  { label: "CBSE Schools", href: "/schools/prayagraj?board=CBSE" },
+  { label: "Hostel Available", href: "/schools/category/hostel" },
+  { label: "IIT/NEET Focus", href: "/schools/category/iit-neet" },
 ];
 
-export default async function HomePage() {
-  const [cities, featuredResponse, admissionResponse] = await Promise.all([
-    fetchCities(),
-    fetchSchoolsList({ featured: true, limit: 4 }).catch(() => ({
-      data: [],
-      pagination: { page: 1, limit: 4, total: 0, totalPages: 0 }
-    })),
-    fetchSchoolsList({ admissionOpen: true, limit: 4 }).catch(() => ({
-      data: [],
-      pagination: { page: 1, limit: 4, total: 0, totalPages: 0 }
-    }))
-  ]);
+const trustItems = [
+  "Verified school data",
+  "WhatsApp-first inquiry",
+  "OTP-verified leads",
+  "Free forever for parents",
+];
 
-  const cityCounts = new Map(cities.map((city) => [city.slug, city._count?.schools ?? 0]));
+const categories: { icon: ReactNode; title: string; count: string; href: string }[] = [
+  {
+    icon: <MdSchool size={28} color="#185FA5" />,
+    title: "CBSE Schools",
+    count: "3 schools in Prayagraj",
+    href: "/schools/prayagraj?board=CBSE",
+  },
+  {
+    icon: <HiOutlineOfficeBuilding size={28} color="#185FA5" />,
+    title: "Hostel / Boarding",
+    count: "2 schools with hostel",
+    href: "/schools/category/hostel",
+  },
+  {
+    icon: <MdScience size={28} color="#185FA5" />,
+    title: "IIT / NEET Focus",
+    count: "2 schools",
+    href: "/schools/category/iit-neet",
+  },
+  {
+    icon: <HiOutlineUserGroup size={28} color="#185FA5" />,
+    title: "Girls Schools",
+    count: "1 school in Prayagraj",
+    href: "/schools/category/girls",
+  },
+  {
+    icon: <HiOutlineCurrencyRupee size={28} color="#185FA5" />,
+    title: "Budget Schools",
+    count: "Under ₹500/month",
+    href: "/schools/prayagraj?feeRange=budget",
+  },
+  {
+    icon: <HiOutlineDocumentText size={28} color="#185FA5" />,
+    title: "UP Board Schools",
+    count: "1 school",
+    href: "/schools/prayagraj?board=UP+Board",
+  },
+];
 
+const howItWorksSteps: { icon: ReactNode; bgColor: string; title: string; desc: string }[] = [
+  {
+    icon: <FiSearch size={24} color="#185FA5" />,
+    bgColor: "bg-[#E6F1FB]",
+    title: "Search Schools",
+    desc: "Filter by city, board, fees, and facilities",
+  },
+  {
+    icon: <FiGitMerge size={24} color="#185FA5" />,
+    bgColor: "bg-[#E6F1FB]",
+    title: "Compare Schools",
+    desc: "Compare up to 3 schools side by side — fees, facilities, and board",
+  },
+  {
+    icon: <FiMessageSquare size={24} color="#185FA5" />,
+    bgColor: "bg-[#EAF3DE]",
+    title: "Send a WhatsApp or Inquiry",
+    desc: "Call directly or send an OTP-verified inquiry — completely free",
+  },
+];
+
+const guides: {
+  tag: string;
+  tagColor: "blue" | "amber" | "success";
+  title: string;
+  desc: string;
+  readTime: string;
+  href: string;
+}[] = [
+  {
+    tag: "Admission Guide",
+    tagColor: "blue",
+    title: "School Admission in Prayagraj 2025 — Complete Guide",
+    desc: "Documents, timeline, and fees — everything first-time applicants need to know",
+    readTime: "5 min read",
+    href: "/blog/prayagraj-school-admission-guide-2025",
+  },
+  {
+    tag: "Board Comparison",
+    tagColor: "amber",
+    title: "CBSE vs UP Board — An Honest Comparison for Prayagraj Parents",
+    desc: "Curriculum, exam pattern, and college admissions — a detailed comparison of both boards",
+    readTime: "4 min read",
+    href: "/blog/cbse-vs-up-board-prayagraj",
+  },
+  {
+    tag: "School Reviews",
+    tagColor: "success",
+    title: "Top Hostel Schools in Prayagraj — Fees and Facilities",
+    desc: "Safe, affordable, and academically strong boarding schools",
+    readTime: "6 min read",
+    href: "/blog/top-hostel-schools-prayagraj",
+  },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
   return (
     <>
+      {/* ── Section 1: Hero ── */}
       <section className="bg-white">
-        <div className="container-shell grid gap-10 py-12 md:grid-cols-[1.08fr_0.92fr] md:py-16">
-          <div className="flex flex-col justify-center">
-            <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#E6F1FB] px-4 py-2 text-sm font-semibold text-[#185FA5]">
-              <Sparkles size={16} />
-              Admissions, search, and verified leads
-            </span>
-            <h1 className="font-heading text-4xl font-bold leading-tight text-[#042C53] md:text-5xl">
-              Find the right school for your child in your city.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-[#55534e]">
-              Compare fees, boards, facilities, hostel options, and admission status across trusted schools in Prayagraj, Banda, Kanpur, Jhansi, and Lucknow.
-            </p>
-            <div className="mt-8">
-              <Suspense>
-                <SearchPanel />
-              </Suspense>
-            </div>
-          </div>
-          <div className="grid content-center gap-4">
-            <Card className="bg-[#042C53] text-white">
-              <p className="font-heading text-2xl font-bold">WhatsApp-first admission discovery</p>
-              <p className="mt-3 text-sm leading-6 text-[#E6F1FB]">
-                Parents can call, WhatsApp, compare, or send OTP-verified inquiries. Schools get a clean lead pipeline and free digital profile.
-              </p>
-            </Card>
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <ShieldCheck className="text-[#185FA5]" />
-                <p className="mt-3 text-sm font-semibold">Moderated school data</p>
-              </Card>
-              <Card>
-                <BrainCircuit className="text-[#EF9F27]" />
-                <p className="mt-3 text-sm font-semibold">AI recommendations</p>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-shell py-12">
-        <h2 className="font-heading text-3xl font-bold text-[#0C447C]">Popular cities</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {targetCities.map((city) => (
-            <Link
-              key={city.slug}
-              href={`/schools/${city.slug}`}
-              className="rounded-xl border border-[#D3D1C7] bg-white p-4 font-semibold hover:border-[#85B7EB]"
-            >
-              <MapPin className="mb-3 text-[#185FA5]" size={20} />
-              Schools in {city.name}
-              <span className="mt-2 block text-xs font-normal text-[#55534e]">
-                {cityCounts.get(city.slug) ?? 0} schools
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-4">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="font-heading text-3xl font-bold text-[#0C447C]">Featured schools</h2>
-          <Button asChild variant="ghost">
-            <Link href="/schools">
-              View all
-              <ArrowRight size={17} />
-            </Link>
-          </Button>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2">
-          {featuredResponse.data.map((school) => (
-            <SchoolCard key={school.id} school={school} />
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-8">
-        <h2 className="font-heading text-3xl font-bold text-[#0C447C]">Admission open now</h2>
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          {admissionResponse.data.map((school) => (
-            <SchoolCard key={school.id} school={school} />
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-8">
-        <h2 className="font-heading text-3xl font-bold text-[#0C447C]">Browse by category</h2>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {categoryLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-full border border-[#D3D1C7] bg-white px-4 py-2 text-sm font-semibold text-[#185FA5] hover:bg-[#E6F1FB]"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-12">
-        <div className="rounded-xl bg-[#FAEEDA] p-6 md:flex md:items-center md:justify-between md:p-8">
+        <div className="container-shell grid min-h-[88vh] items-center gap-10 py-12 md:grid-cols-[3fr_2fr] md:py-16">
+          {/* Left column */}
           <div>
-            <h2 className="font-heading text-3xl font-bold text-[#633806]">Let AI find the perfect school</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#633806]">
-              Ask about budget, board preference, hostel, sports, IIT/NEET goals, and commute priorities.
+            <Badge tone="blue">
+              <HiOutlineAcademicCap className="mr-1 inline" size={13} />
+              Prayagraj's #1 School Directory
+            </Badge>
+
+            <h1 className="mt-5 font-heading text-4xl font-bold leading-tight text-[#2C2C2A] md:text-5xl">
+              Find the Right School
+              <br />
+              for Your Child
+              <br />
+              <span className="text-[#185FA5]">in Prayagraj</span>
+            </h1>
+
+            <p className="mt-4 max-w-lg text-lg leading-relaxed text-[#888780]">
+              Compare fees, board, hostel, and transport — all in one place.
+              <br />
+              Send an OTP-verified inquiry and the school will call you back.
             </p>
+
+            <div className="mt-8">
+              <HeroSearch />
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {quickFilters.map((f) => (
+                <Link
+                  key={f.href}
+                  href={f.href}
+                  className="rounded-full border border-[#D3D1C7] px-4 py-1.5 text-sm transition-colors hover:border-[#185FA5] hover:text-[#185FA5]"
+                >
+                  {f.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/schools/prayagraj">
+                  Browse Schools <FiArrowRight size={16} />
+                </Link>
+              </Button>
+              <Button asChild variant="amber">
+                <Link href="/ai-recommend">
+                  Get AI Recommendations <FiArrowRight size={16} />
+                </Link>
+              </Button>
+            </div>
           </div>
-          <Button asChild className="mt-5 md:mt-0" variant="amber">
-            <Link href="/ai-recommend">Start AI recommendation</Link>
-          </Button>
+
+          {/* Right column — stat cards */}
+          <div className="hidden md:grid md:grid-cols-2 md:gap-4">
+            {heroStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-xl border-l-4 border-[#185FA5] bg-white p-5 shadow-sm"
+              >
+                <p className="font-heading text-3xl font-bold text-[#185FA5]">{stat.value}</p>
+                <p className="mt-1 text-sm text-[#888780]">{stat.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="container-shell py-8">
-        <h2 className="font-heading text-3xl font-bold text-[#0C447C]">Parent guides</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {blogPlaceholders.map((post) => (
-            <Card key={post.title}>
-              <p className="font-semibold text-[#0C447C]">{post.title}</p>
-              <p className="mt-2 text-sm leading-6 text-[#55534e]">{post.excerpt}</p>
-            </Card>
+      {/* ── Section 2: Trust Bar ── */}
+      <section className="bg-[#185FA5] py-4">
+        <div className="container-shell flex flex-wrap justify-center gap-8 md:gap-16">
+          {trustItems.map((item) => (
+            <span key={item} className="flex items-center gap-1.5 text-sm font-medium text-white">
+              <FiCheck size={14} />
+              {item}
+            </span>
           ))}
+        </div>
+      </section>
+
+      {/* ── Section 3: Featured Schools ── */}
+      <section className="bg-[#F1EFE8] py-16">
+        <div className="container-shell">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <h2 className="font-heading text-3xl font-bold text-[#0C447C]">
+                Featured Schools in Prayagraj
+              </h2>
+              <p className="mt-1 text-[#888780]">
+                Verified listings with fees, board, and facilities
+              </p>
+            </div>
+            <Link
+              href="/schools/prayagraj"
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-[#185FA5] hover:underline"
+            >
+              View All Schools <FiArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredSchools.map((school) => (
+              <SchoolCard key={school.id} school={school} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 4: Browse by Category ── */}
+      <section className="bg-white py-16">
+        <div className="container-shell">
+          <h2 className="font-heading text-3xl font-bold text-[#0C447C]">
+            What Are You Looking For?
+          </h2>
+          <p className="mt-1 text-[#888780]">
+            Choose a category to find matching schools in Prayagraj
+          </p>
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+            {categories.map((cat) => (
+              <Link key={cat.href} href={cat.href}>
+                <div className="group cursor-pointer rounded-xl border border-[#D3D1C7] bg-white p-5 transition-all duration-200 hover:border-[#185FA5] hover:shadow-md">
+                  <div className="mb-3">{cat.icon}</div>
+                  <h3 className="font-heading text-base font-semibold text-[#2C2C2A]">
+                    {cat.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#888780]">{cat.count}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 5: How It Works ── */}
+      <section className="bg-[#F1EFE8] py-16">
+        <div className="container-shell">
+          <h2 className="font-heading text-3xl font-bold text-[#0C447C]">
+            How Easy It Is to Send an Admission Inquiry
+          </h2>
+          <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
+            {howItWorksSteps.map((step, i) => (
+              <div key={i}>
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-full ${step.bgColor}`}
+                >
+                  {step.icon}
+                </div>
+                <h3 className="mt-4 font-heading text-lg font-semibold text-[#2C2C2A]">
+                  {step.title}
+                </h3>
+                <p className="mt-1 leading-relaxed text-[#888780]">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 6: AI CTA ── */}
+      <section className="bg-gradient-to-br from-[#0C447C] to-[#185FA5] py-16">
+        <div className="container-shell flex flex-col items-center justify-between gap-8 md:flex-row">
+          <div>
+            <h2 className="font-heading text-3xl font-bold text-white">
+              Your AI School Advisor — Free of Charge
+            </h2>
+            <p className="mt-3 max-w-lg text-blue-200">
+              Share your budget, board preference, hostel needs, and goals.
+              <br />
+              The AI will suggest the best matching schools in Prayagraj.
+            </p>
+            <Button asChild variant="amber" className="mt-6">
+              <Link href="/ai-recommend">
+                Get Free AI Recommendations <FiArrowRight size={16} />
+              </Link>
+            </Button>
+          </div>
+
+          {/* Mock chat UI */}
+          <div className="hidden max-w-xs rounded-xl bg-white/10 p-4 md:block">
+            <div className="mb-3 rounded-lg bg-white/20 p-3 text-sm text-white">
+              Class 9, CBSE, budget ₹4,000, hostel needed
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-[#EF9F27] p-3 text-sm text-[#2C2C2A]">
+              <FiCheck size={14} className="flex-shrink-0" />
+              2 schools found in Prayagraj matching your needs
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 7: Admission Open ── */}
+      <section className="bg-white py-16">
+        <div className="container-shell">
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="font-heading text-3xl font-bold text-[#0C447C]">
+                Admissions Open Now — 2025-26
+              </h2>
+              <Badge tone="success">Live</Badge>
+            </div>
+            <Link
+              href="/schools/prayagraj"
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-[#185FA5] hover:underline"
+            >
+              All Schools <FiArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {admissionOpenSchools.map((s) => (
+              <SchoolCard key={s.id} school={s} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 8: Blog Guides ── */}
+      <section className="bg-[#F1EFE8] py-16">
+        <div className="container-shell">
+          <h2 className="font-heading text-3xl font-bold text-[#0C447C]">
+            Helpful Guides for Parents
+          </h2>
+          <p className="mt-1 text-[#888780]">Articles to help you make informed school admission decisions</p>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {guides.map((article) => (
+              <Link key={article.href} href={article.href}>
+                <article className="h-full rounded-xl border border-[#D3D1C7] bg-white p-6 transition-shadow hover:shadow-md">
+                  <Badge tone={article.tagColor}>{article.tag}</Badge>
+                  <h3 className="mt-3 font-heading text-base font-semibold leading-snug text-[#2C2C2A]">
+                    {article.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#888780]">{article.desc}</p>
+                  <p className="mt-4 flex items-center gap-1 text-xs text-[#888780]">
+                    <FiArrowRight size={12} />
+                    {article.readTime}
+                  </p>
+                </article>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
     </>

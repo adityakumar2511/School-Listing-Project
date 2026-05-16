@@ -1,20 +1,42 @@
 import { Router } from "express";
 import {
+  adminCreateSchool,
   approveModerationItem,
   approveSchool,
+  auditLogStats,
+  deleteSchool,
+  editSchool,
   listAdminSchools,
+  listAdminUsers,
+  listAuditLogs,
   listModerationQueue,
   rejectModerationItem,
-  rejectSchool
+  rejectSchool,
+  toggleFeatured,
 } from "../controllers/admin.controller.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth, requireRole("admin"));
+
+// Users
+adminRouter.get("/users", listAdminUsers);
+
+// Schools
 adminRouter.get("/schools", listAdminSchools);
+adminRouter.post("/schools", adminCreateSchool);
 adminRouter.put("/schools/:id/approve", approveSchool);
 adminRouter.put("/schools/:id/reject", rejectSchool);
+adminRouter.put("/schools/:id/edit", editSchool);
+adminRouter.delete("/schools/:id", deleteSchool);
+adminRouter.put("/schools/:id/toggle-featured", toggleFeatured);
+
+// Moderation queue
 adminRouter.get("/moderation", listModerationQueue);
 adminRouter.put("/moderation/:id/approve", approveModerationItem);
 adminRouter.put("/moderation/:id/reject", rejectModerationItem);
+
+// Audit logs — admin-only
+adminRouter.get("/audit-logs/stats", auditLogStats);
+adminRouter.get("/audit-logs", listAuditLogs);

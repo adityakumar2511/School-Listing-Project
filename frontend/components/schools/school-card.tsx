@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { useCompareStore } from "@/store/compare-store";
-import type { School } from "@/data/schools";
+import type { NormalizedSchool } from "@/lib/schools-api";
 
-export function SchoolCard({ school }: { school: School }) {
+export function SchoolCard({ school }: { school: NormalizedSchool }) {
   const selectedIds = useCompareStore((state) => state.selectedIds);
   const toggleSchool = useCompareStore((state) => state.toggleSchool);
   const isSelected = selectedIds.includes(school.id);
@@ -41,12 +41,23 @@ export function SchoolCard({ school }: { school: School }) {
         </div>
         <p className="line-clamp-2 text-sm leading-6 text-[#55534e]">{school.description}</p>
         <div className="flex flex-wrap gap-2">
-          {school.facilities.slice(0, 4).map((facility) => (
-            <span key={facility} className="inline-flex items-center gap-1 text-xs text-[#55534e]">
-              <Check size={13} className="text-[#3B6D11]" />
-              {facility}
-            </span>
-          ))}
+          {school.facilities.length === 0 ? (
+            <span className="text-xs text-[#888780]">Facility details coming soon</span>
+          ) : (
+            <>
+              {school.facilities.slice(0, 4).map((facility) => (
+                <span key={facility} className="inline-flex items-center gap-1 text-xs text-[#55534e]">
+                  <Check size={13} className="text-[#3B6D11]" />
+                  {facility}
+                </span>
+              ))}
+              {school.facilities.length > 4 && (
+                <span className="inline-flex items-center rounded-full bg-[#E6F1FB] px-2 py-0.5 text-xs font-medium text-[#185FA5]">
+                  +{school.facilities.length - 4} more
+                </span>
+              )}
+            </>
+          )}
         </div>
         <div className="flex items-center justify-between border-t border-[#D3D1C7] pt-4">
           <span className="flex items-center gap-1 text-sm font-semibold text-[#2C2C2A]">

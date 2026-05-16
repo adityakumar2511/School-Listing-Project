@@ -1,8 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { env } from "../config/env.js";
 import { prisma } from "../config/prisma.js";
 import { findSchoolBySlug, findSchools } from "../data/mock-schools.js";
 import { resendService } from "../services/resend.service.js";
+import { twilioService } from "../services/twilio.service.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -26,14 +28,47 @@ const listQuerySchema = z.object({
 });
 
 const createSchoolSchema = z.object({
-  name: z.string().trim().min(2),
-  contactPersonName: z.string().trim().min(2).optional(),
-  phone: z.string().trim().min(10).optional(),
-  city: z.string().trim().min(1),
-  board: z.string().trim().optional(),
+  // Step 1 — Basic
+  name: z.string().trim().min(2, "School name is required"),
+  city: z.string().trim().min(1, "City is required"),
+  board: z.string().trim().min(1, "Board is required"),
   type: z.string().trim().optional(),
   medium: z.string().trim().optional(),
-  description: z.string().trim().optional()
+  establishedYear: z.coerce.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  description: z.string().trim().optional(),
+
+  // Step 2 — Contact + Address
+  principalName: z.string().trim().optional(),
+  phone: z.string().trim().min(10, "Phone number is required"),
+  whatsapp: z.string().trim().optional(),
+  email: z.union([z.string().email(), z.literal("")]).optional(),
+  addressLine: z.string().trim().optional(),
+  pincode: z.string().trim().optional(),
+
+  // Step 3 — Fees + Academics
+  monthlyFee: z.coerce.number().int().nonnegative().optional(),
+  admissionFee: z.coerce.number().int().nonnegative().optional(),
+  classesFrom: z.string().trim().optional(),
+  classesTo: z.string().trim().optional(),
+  admissionOpen: z.coerce.boolean().optional(),
+
+  // Step 4 — Facilities (all optional booleans)
+  facilities: z
+    .object({
+      library: z.boolean().optional(),
+      labs: z.boolean().optional(),
+      hostel: z.boolean().optional(),
+      transport: z.boolean().optional(),
+      smartClassroom: z.boolean().optional(),
+      wifi: z.boolean().optional(),
+      cctv: z.boolean().optional(),
+      gym: z.boolean().optional(),
+      swimmingPool: z.boolean().optional(),
+      playground: z.boolean().optional(),
+      auditorium: z.boolean().optional(),
+      cafeteria: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const updateSchoolSchema = z.record(z.string(), z.unknown());
@@ -116,6 +151,25 @@ async function assertSchoolAccess(user: Express.Request["user"], schoolId: strin
   throw new HttpError(403, "You do not have permission to manage this school");
 }
 
+export const getMySchool = asyncHandler(async (request, response) => {
+  if (!request.user) throw new HttpError(401, "Authentication required");
+
+  const school = await prisma.school.findFirst({
+    where: { ownerId: request.user.id },
+    include: {
+      details: true,
+      address: true,
+      fees: true,
+      facilities: true,
+      academics: true,
+    },
+  });
+
+  if (!school) throw new HttpError(404, "No school registered to your account");
+
+  response.json({ data: school });
+});
+
 export const listSchools = asyncHandler(async (request, response) => {
   const query = listQuerySchema.parse(request.query);
   const { data, total } = await findSchools(
@@ -154,28 +208,43 @@ export const getSchool = asyncHandler(async (request, response) => {
 });
 
 export const createSchool = asyncHandler(async (request, response) => {
-  const body = createSchoolSchema.parse(request.body);
-  const city = await resolveCity(body.city);
+  if (!request.user) {
+    throw new HttpError(401, "Authentication required");
+  }
 
+  const body = createSchoolSchema.parse(request.body);
+
+  // Resolve city + board (both required)
+  const city = await resolveCity(body.city);
   if (!city) {
     throw new HttpError(400, "City not found");
   }
 
-  const boardSlug = body.board ? slugify(body.board.replaceAll("_", "-")) : "cbse";
-  const board =
-    (await prisma.board.findFirst({
-      where: {
-        OR: [{ slug: boardSlug }, { name: { equals: body.board ?? "CBSE", mode: "insensitive" } }]
-      }
-    })) ?? (await prisma.board.findUnique({ where: { slug: "cbse" } }));
-
+  const boardSlug = slugify(body.board.replaceAll("_", "-"));
+  const board = await prisma.board.findFirst({
+    where: {
+      OR: [{ slug: boardSlug }, { name: { equals: body.board, mode: "insensitive" } }],
+    },
+  });
   if (!board) {
     throw new HttpError(400, "Board not found");
   }
 
-  const slug = await uniqueSchoolSlug(body.name);
-  const phoneDigits = body.phone ? last10Digits(body.phone) : "";
+  // One owner = one school. Block re-registration.
+  const existing = await prisma.school.findFirst({ where: { ownerId: request.user.id } });
+  if (existing) {
+    throw new HttpError(409, "You have already registered a school. Contact support to add another.");
+  }
 
+  const slug = await uniqueSchoolSlug(body.name);
+  const phoneDigits = last10Digits(body.phone);
+  const normalizedPhone = `+91${phoneDigits}`;
+  const whatsappDigits = body.whatsapp ? last10Digits(body.whatsapp) : phoneDigits;
+  const normalizedWhatsapp = `+91${whatsappDigits}`;
+  const ownerId = request.user.id;
+  const facilities = body.facilities ?? {};
+
+  // ── All-or-nothing transaction ──────────────────────────────────────────────
   const school = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const created = await tx.school.create({
       data: {
@@ -184,68 +253,110 @@ export const createSchool = asyncHandler(async (request, response) => {
         cityId: city.id,
         stateId: city.stateId,
         boardId: board.id,
+        ownerId,
         type: body.type ?? "Co-ed",
         medium: body.medium ?? "English",
         description:
           body.description ??
-          `${body.name} registration submitted via SchoolSetu. Our team will verify details before publishing.`,
-        status: "pending"
-      }
+          `${body.name} — registration submitted via SchoolSetu, pending verification.`,
+        status: "pending",
+      },
     });
 
     await tx.schoolDetails.create({
       data: {
         schoolId: created.id,
-        principalName: body.contactPersonName,
-        phone: phoneDigits ? `+91${phoneDigits}` : undefined,
-        whatsapp: phoneDigits ? `+91${phoneDigits}` : undefined
-      }
+        principalName: body.principalName,
+        establishedYear: body.establishedYear,
+        phone: normalizedPhone,
+        whatsapp: normalizedWhatsapp,
+        email: body.email && body.email !== "" ? body.email : undefined,
+      },
     });
 
     await tx.schoolAddress.create({
       data: {
         schoolId: created.id,
-        addressLine: "Address pending verification",
+        addressLine: body.addressLine ?? "Address pending verification",
         city: city.name,
         state: city.state.name,
-        pincode: "000000"
-      }
+        pincode: body.pincode ?? "",
+      },
+    });
+
+    await tx.schoolFees.create({
+      data: {
+        schoolId: created.id,
+        admissionFee: body.admissionFee,
+        tuitionFeeMonthly: body.monthlyFee,
+        tuitionFeeAnnual:
+          body.monthlyFee !== undefined ? body.monthlyFee * 12 : undefined,
+      },
+    });
+
+    await tx.schoolFacilities.create({
+      data: {
+        schoolId: created.id,
+        library: facilities.library ?? false,
+        labs: facilities.labs ?? false,
+        hostel: facilities.hostel ?? false,
+        transport: facilities.transport ?? false,
+        smartClassroom: facilities.smartClassroom ?? false,
+        wifi: facilities.wifi ?? false,
+        cctv: facilities.cctv ?? false,
+        gym: facilities.gym ?? false,
+        swimmingPool: facilities.swimmingPool ?? false,
+        playground: facilities.playground ?? false,
+        auditorium: facilities.auditorium ?? false,
+        cafeteria: facilities.cafeteria ?? false,
+      },
     });
 
     await tx.schoolAcademics.create({
       data: {
         schoolId: created.id,
         streams: [],
-        classesFrom: "Nursery",
-        classesTo: "XII",
-        admissionOpen: false,
-        documentsRequired: []
-      }
-    });
-
-    await tx.schoolFees.create({
-      data: { schoolId: created.id }
-    });
-
-    await tx.schoolFacilities.create({
-      data: { schoolId: created.id }
+        classesFrom: body.classesFrom ?? "Nursery",
+        classesTo: body.classesTo ?? "XII",
+        admissionOpen: body.admissionOpen ?? false,
+        documentsRequired: [],
+      },
     });
 
     return created;
   });
 
-  const notifyEmail = process.env.SCHOOL_REGISTRATION_EMAIL ?? "admin@schoolsetu.example";
-  await resendService.sendMail(
-    notifyEmail,
-    `New school registration: ${school.name}`,
-    `<p><strong>${school.name}</strong> submitted a listing from ${city.name}.</p><p>Status: pending moderation.</p>`
+  // ── Notifications (best-effort, never fail the request) ────────────────────
+  void notifyAdminOfNewSchool(school.name, city.name, normalizedPhone).catch((err) =>
+    console.error("[Schools] admin notification failed:", err)
   );
 
   response.status(201).json({
     message: "School registration submitted for moderation",
-    data: school
+    data: school,
   });
 });
+
+async function notifyAdminOfNewSchool(schoolName: string, cityName: string, phone: string) {
+  const message = `New school registered on SchoolSetu: ${schoolName} (${cityName}). Contact: ${phone}. Pending review.`;
+
+  // Email (Resend)
+  const notifyEmail = env.SCHOOL_REGISTRATION_EMAIL ?? "admin@schoolsetu.example";
+  await resendService
+    .sendMail(
+      notifyEmail,
+      `New school registration: ${schoolName}`,
+      `<p><strong>${schoolName}</strong> submitted a listing from ${cityName}.</p><p>Contact phone: ${phone}</p><p>Status: <strong>pending</strong> — review at <a href="${env.FRONTEND_URL}/admin/schools">/admin/schools</a></p>`
+    )
+    .catch((err) => console.error("[Schools] resend.sendMail failed:", err));
+
+  // WhatsApp (Twilio) — only if ADMIN_NOTIFICATION_PHONE is configured
+  if (env.ADMIN_NOTIFICATION_PHONE) {
+    await twilioService
+      .sendWhatsAppMessage(env.ADMIN_NOTIFICATION_PHONE, message)
+      .catch((err) => console.error("[Schools] twilio whatsapp failed:", err));
+  }
+}
 
 export const updateSchool = asyncHandler(async (request, response) => {
   if (!request.user) {

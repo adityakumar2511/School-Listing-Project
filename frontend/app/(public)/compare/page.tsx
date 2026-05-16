@@ -1,10 +1,13 @@
 "use client";
 
-import { schools } from "@/data/schools";
+import { mockSchools } from "@/data/schools";
+import { normalizeSchool } from "@/lib/schools-api";
 import { useCompareStore } from "@/store/compare-store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
+
+const schools = mockSchools.map(normalizeSchool);
 
 export default function ComparePage() {
   const selectedIds = useCompareStore((state) => state.selectedIds);

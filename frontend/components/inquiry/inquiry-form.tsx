@@ -22,7 +22,7 @@ const inquirySchema = z.object({
     .regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
   childName: z.string().trim().min(2, "Enter student's name"),
   classApplying: z.string().min(1, "Select the class applying for"),
-  message: z.string().trim().max(500).optional()
+  message: z.string().trim().max(300, "Message cannot exceed 300 characters").optional()
 });
 
 type InquiryValues = z.infer<typeof inquirySchema>;
@@ -69,6 +69,7 @@ function phoneFromToken(token: string | null): string {
 type InquiryFormProps = {
   schoolId: string;
   schoolName: string;
+  admissionClasses?: string[];
   /** Called after the modal/container should close on success */
   onSuccess?: () => void;
 };
@@ -80,7 +81,8 @@ type ApiError = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProps) {
+export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess }: InquiryFormProps) {
+  const classOptions = admissionClasses && admissionClasses.length > 0 ? admissionClasses : CLASS_OPTIONS;
   const token = getAuthToken();
   const isLoggedIn = Boolean(token);
 
@@ -172,20 +174,20 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
       <div className="grid place-items-center gap-3 rounded-xl border border-[#D3D1C7] bg-[#EAF3DE] p-8 text-center">
         <CheckCircle2 className="text-[#3B6D11]" size={40} />
         <div>
-          <p className="font-heading text-lg font-bold text-[#3B6D11]">Inquiry submitted!</p>
+          <p className="font-heading text-lg font-bold text-[#3B6D11]">
+            ✓ Inquiry Submitted!
+          </p>
           <p className="mt-1 text-sm text-[#2C2C2A]">
-            {schoolName} will contact you on{" "}
-            <span className="font-semibold text-[#25D366]">WhatsApp</span> within 24 hours.
+            The school will contact you on{" "}
+            <span className="font-semibold text-[#25D366]">WhatsApp</span> shortly.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => {
-            mutation.reset();
-          }}
+          onClick={() => mutation.reset()}
           className="mt-2 text-xs font-medium text-[#185FA5] underline-offset-2 hover:underline"
         >
-          Send another inquiry
+          Submit Another Inquiry
         </button>
       </div>
     );
@@ -231,16 +233,15 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
     >
       {/* Header */}
       <div>
-        <p className="font-heading text-xl font-bold text-[#0C447C]">Send admission inquiry</p>
+        <p className="font-heading text-xl font-bold text-[#0C447C]">Send Admission Inquiry</p>
         <p className="mt-1 text-sm text-[#55534e]">
-          Inquiry for <span className="font-medium text-[#2C2C2A]">{schoolName}</span>. School will call/WhatsApp
-          you within 24 hours.
+          <span className="font-medium text-[#2C2C2A]">{schoolName}</span> — the school will contact you within 24 hours.
         </p>
       </div>
 
       {/* Parent name */}
       <label className="grid gap-1 text-sm font-medium text-[#2C2C2A]">
-        Your name (parent / guardian)
+        Parent&apos;s Name
         <input
           type="text"
           autoComplete="name"
@@ -255,7 +256,7 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
 
       {/* Phone */}
       <label className="grid gap-1 text-sm font-medium text-[#2C2C2A]">
-        WhatsApp / phone number
+        Phone number (WhatsApp)
         <div className="flex">
           <span className="inline-flex items-center rounded-l-lg border border-r-0 border-[#D3D1C7] bg-[#F1EFE8] px-3 text-sm text-[#55534e]">
             +91
@@ -277,7 +278,7 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
 
       {/* Child name */}
       <label className="grid gap-1 text-sm font-medium text-[#2C2C2A]">
-        Student's name
+        Child&apos;s Name
         <input
           type="text"
           placeholder="e.g. Ananya Kumar"
@@ -291,16 +292,16 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
 
       {/* Class applying */}
       <label className="grid gap-1 text-sm font-medium text-[#2C2C2A]">
-        Class applying for
+        Class Applying For
         <select
           className={fieldClass(Boolean(errors.classApplying))}
           {...register("classApplying")}
           defaultValue=""
         >
           <option value="" disabled>
-            Select class
+            Select a class
           </option>
-          {CLASS_OPTIONS.map((option) => (
+          {classOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -314,10 +315,10 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
       {/* Message */}
       <label className="grid gap-1 text-sm font-medium text-[#2C2C2A]">
         Message{" "}
-        <span className="font-normal text-[#888780]">(optional)</span>
+        <span className="font-normal text-[#888780]">(optional, max 300 characters)</span>
         <textarea
           rows={3}
-          placeholder="Any specific question about fees, hostel, transport…"
+          placeholder="Any questions about fees, hostel, transport, or anything else..."
           className={fieldClass()}
           {...register("message")}
         />
@@ -342,7 +343,7 @@ export function InquiryForm({ schoolId, schoolName, onSuccess }: InquiryFormProp
         ) : (
           <Send size={17} />
         )}
-        {mutation.isPending ? "Submitting…" : "Submit Inquiry"}
+        {mutation.isPending ? "Submitting..." : "Submit Inquiry"}
       </Button>
     </form>
   );
