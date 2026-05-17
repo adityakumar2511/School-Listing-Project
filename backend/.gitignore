@@ -8,3 +8,4 @@ coverage
 *.log
 frontend/.next
 backend/dist
+src/generated/prisma

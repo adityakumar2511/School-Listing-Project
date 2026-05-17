@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { FiUser } from "react-icons/fi";
 import { MdShield } from "react-icons/md";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { API_URL } from "@/lib/schools-api";
 import { authHeaders, getAuthToken } from "@/lib/auth-token";
@@ -26,14 +27,14 @@ const adminRoutes = [
   { slug: "audit-logs", label: "Audit Logs" },
 ];
 
-type AdminInfo = { id: string; phone?: string; name?: string };
+type AdminInfo = { id: string; phone?: string; name?: string; email?: string };
 
 type AdminSchool = { id: string; status: "pending" | "approved" | "rejected" };
 type AdminInquiry = { id: string; createdAt: string };
 
-function decodeAdminFromToken(token: string): AdminInfo | null {
+function decodeAdminFromToken(token: string): (AdminInfo & { role?: string }) | null {
   try {
-    return JSON.parse(atob(token.split(".")[1] ?? "")) as AdminInfo;
+    return JSON.parse(atob(token.split(".")[1] ?? "")) as AdminInfo & { role?: string };
   } catch {
     return null;
   }
@@ -50,21 +51,29 @@ function formatPhone(phone?: string) {
 
 export default function AdminPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [admin, setAdmin] = useState<AdminInfo | null>(null);
 
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      router.replace("/auth/parent/login");
+      const q = new URLSearchParams({ redirect: pathname || "/admin" });
+      router.replace(`/auth/login?${q.toString()}`);
       return;
     }
     const payload = decodeAdminFromToken(token);
-    if (!payload) {
-      router.replace("/auth/parent/login");
+    if (!payload || payload.role !== "admin") {
+      const q = new URLSearchParams({ redirect: pathname || "/admin" });
+      router.replace(`/auth/login?${q.toString()}`);
       return;
     }
-    setAdmin(payload);
-  }, [router]);
+    setAdmin({
+      id: payload.id,
+      phone: payload.phone,
+      name: payload.name,
+      email: payload.email,
+    });
+  }, [pathname, router]);
 
   const { data: schools } = useQuery({
     queryKey: ["admin-overview-schools"],
@@ -89,14 +98,14 @@ export default function AdminPage() {
   });
 
   const totalSchools = schools?.length ?? 0;
-  const pendingApprovals = schools?.filter((s) => s.status === "pending").length ?? 0;
+  const pendingApprovals = schools?.filter((item) => item.status === "pending").length ?? 0;
   const today = new Date().toDateString();
   const inquiriesToday =
     inquiries?.filter((i) => new Date(i.createdAt).toDateString() === today).length ?? 0;
 
   const stats = [
     { label: "Total Schools", value: totalSchools },
-    { label: "Pending Approvals", value: pendingApprovals },
+    { label: "All inquiries", value: inquiries?.length ?? 0 },
     { label: "Inquiries Today", value: inquiriesToday },
   ];
 
@@ -122,12 +131,31 @@ export default function AdminPage() {
               </p>
               <p className="flex items-center gap-1 text-xs text-[#55534e]">
                 <FiUser size={11} />
-                {formatPhone(admin.phone) || admin.id}
+                {(admin.email && admin.email.trim()) ||
+                  formatPhone(admin.phone) ||
+                  admin.id}
               </p>
             </div>
           </div>
         )}
       </div>
+
+      <Card className="mt-8 flex flex-col gap-4 border-2 border-[#EF9F27] bg-[#FAEEDA] p-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="font-heading text-xl font-bold text-[#633806]">
+            Schools pending review
+          </p>
+          <p className="mt-1 text-4xl font-bold tabular-nums text-[#0C447C]">
+            {pendingApprovals}
+          </p>
+          <p className="mt-1 text-sm text-[#55534e]">
+            Approve or reject new listings before they go live on SchoolSetu.
+          </p>
+        </div>
+        <Button asChild variant="amber" size="lg" className="shrink-0">
+          <Link href="/admin/schools/pending">Review pending schools</Link>
+        </Button>
+      </Card>
 
       {/* Stats */}
       <div className="mt-8 grid gap-4 sm:grid-cols-3">

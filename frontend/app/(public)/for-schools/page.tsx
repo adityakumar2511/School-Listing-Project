@@ -105,12 +105,12 @@ export default function ForSchoolsPage() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Button asChild size="lg">
-                <Link href="/auth/register">
+                <Link href="/auth/school/register">
                   Register Your School <FiArrowRight size={16} />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/auth/school/login">Already registered? Sign in</Link>
+                <Link href="/auth/login">Already registered? Sign in</Link>
               </Button>
             </div>
           </div>
@@ -207,13 +207,13 @@ export default function ForSchoolsPage() {
             size="lg"
             className="mt-8 bg-[#EF9F27] px-8 text-base font-semibold text-[#2C2C2A] hover:bg-[#d48e22]"
           >
-            <Link href="/auth/register">
+            <Link href="/auth/school/register">
               Register Your School Free <FiArrowRight size={18} />
             </Link>
           </Button>
           <p className="mt-6 text-sm text-blue-200">
             Already have an account?{" "}
-            <Link href="/auth/school/login" className="font-semibold text-white hover:underline">
+            <Link href="/auth/login" className="font-semibold text-white hover:underline">
               Sign in here
             </Link>
           </p>

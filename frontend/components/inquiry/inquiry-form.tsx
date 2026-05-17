@@ -114,7 +114,7 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
     mutationFn: async (values: InquiryValues) => {
       const response = await fetch(`${API_URL}/api/inquiries`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           schoolId,
           parentName: values.parentName,
@@ -161,7 +161,7 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
             <Link href={`/auth/login?next=/schools/${schoolId}`}>Login</Link>
           </Button>
           <Button asChild variant="amber">
-            <Link href={`/auth/register?next=/schools/${schoolId}`}>Register free</Link>
+            <Link href={`/auth/register/parent?next=/schools/${schoolId}`}>Register free</Link>
           </Button>
         </div>
       </div>

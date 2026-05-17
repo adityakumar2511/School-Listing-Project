@@ -20,7 +20,12 @@ const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   ADMIN_NOTIFICATION_PHONE: z.string().optional(),
-  SCHOOL_REGISTRATION_EMAIL: z.string().optional()
+  SCHOOL_REGISTRATION_EMAIL: z.string().optional(),
+  /** SMTP — optional; when unset, email OTP falls back to Resend or dev console log. */
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional()
 });
 
 export const env = envSchema.parse(process.env);

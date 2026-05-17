@@ -1,13 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { PrismaClient } from "../src/generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
-// ── ADMIN CREDENTIALS ─────────────────────────────────────────────────────────
-// Replace with your real phone number BEFORE running `npm run seed`.
-// This is the phone used to log in via OTP at /auth/parent/login.
-// Must include country code, e.g. "+919876543210".
-const ADMIN_PHONE = "+91XXXXXXXXXX";
+const ADMIN_EMAIL = "adityak4724@gmail.com";
 const ADMIN_NAME = "SchoolSetu Admin";
+const ADMIN_DEFAULT_PASSWORD = "Admin@123";
 
 const GALLERY_IMAGES = [
   "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80",
@@ -455,11 +453,23 @@ async function upsertSchool(seed: SchoolSeed, stateId: string) {
 }
 
 async function main() {
-  // ── Admin user ─────────────────────────────────────────────────────────────
+  const adminPasswordHash = await bcrypt.hash(ADMIN_DEFAULT_PASSWORD, 10);
+
   await prisma.user.upsert({
-    where: { phone: ADMIN_PHONE },
-    update: { name: ADMIN_NAME, role: "admin" },
-    create: { phone: ADMIN_PHONE, name: ADMIN_NAME, role: "admin" },
+    where: { email: ADMIN_EMAIL },
+    update: {
+      name: ADMIN_NAME,
+      role: "admin",
+      isEmailVerified: true,
+      passwordHash: adminPasswordHash,
+    },
+    create: {
+      email: ADMIN_EMAIL,
+      name: ADMIN_NAME,
+      role: "admin",
+      isEmailVerified: true,
+      passwordHash: adminPasswordHash,
+    },
   });
 
   const state = await prisma.state.upsert({
@@ -559,14 +569,10 @@ async function main() {
   console.log("  Seed completed");
   console.log("    5 cities, 5 boards, 13 facilities, 7 approved schools");
   console.log("------------------------------------------------------------");
-  console.log(`Admin seeded. Login phone: ${ADMIN_PHONE}`);
-  console.log(`  Name : ${ADMIN_NAME}`);
-  console.log("  URL  : http://localhost:3000/auth/parent/login");
-  console.log("  Flow : Enter phone -> receive OTP -> verify -> /admin");
-  if (ADMIN_PHONE.includes("X")) {
-    console.log("\n  WARNING: Replace ADMIN_PHONE in seed.ts with a real");
-    console.log("  number before you can log in. Re-run `npm run seed`.");
-  }
+  console.log("Admin seeded (email + password login).");
+  console.log(`  Email    : ${ADMIN_EMAIL}`);
+  console.log(`  Password : ${ADMIN_DEFAULT_PASSWORD}`);
+  console.log(`  Name     : ${ADMIN_NAME}`);
   console.log("------------------------------------------------------------\n");
 }
 

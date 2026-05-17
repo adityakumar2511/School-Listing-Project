@@ -5,9 +5,20 @@ const COOKIE_NAME = "schoolsetu_token";
 
 type JwtPayload = {
   id: string;
-  role: "parent" | "school" | "admin";
+  role: string;
   phone?: string;
+  email?: string;
+  name?: string;
 };
+
+function loginRedirect(request: NextRequest): NextResponse {
+  const url = new URL("/auth/login", request.url);
+  url.searchParams.set(
+    "redirect",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+  return NextResponse.redirect(url);
+}
 
 async function verifyToken(token: string): Promise<JwtPayload | null> {
   const secret = process.env.JWT_SECRET;
@@ -24,50 +35,53 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
-  // ── /admin/* — requires role="admin" ────────────────────────────────────────
+  // ── /admin/* — requires role="admin" ─────────────────────────────────────────
   if (pathname.startsWith("/admin")) {
     if (!token) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     if (payload.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+      return loginRedirect(request);
     }
     return NextResponse.next();
   }
 
-  // ── /school/dashboard — requires role="school" or "admin" ───────────────────
+  // ── /school/dashboard/* — role "school" or "admin" ──────────────────────────
   if (pathname.startsWith("/school/dashboard")) {
     if (!token) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     if (payload.role !== "school" && payload.role !== "admin") {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     return NextResponse.next();
   }
 
-  // ── /dashboard — parent area; non-parents go to their own dashboard ─────────
+  // ── /dashboard/* — parents only (admin/school go to their dashboards) ─────
   if (pathname.startsWith("/dashboard")) {
     if (!token) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return loginRedirect(request);
     }
     if (payload.role === "admin") {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
     if (payload.role === "school") {
       return NextResponse.redirect(new URL("/school/dashboard", request.url));
+    }
+    if (payload.role !== "parent") {
+      return loginRedirect(request);
     }
     return NextResponse.next();
   }

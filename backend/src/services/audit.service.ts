@@ -1,4 +1,4 @@
-import { AuditAction } from "@prisma/client";
+import { AuditAction } from "../generated/prisma/index.js";
 import { prisma } from "../config/prisma.js";
 
 export interface AuditParams {

@@ -1,14 +1,16 @@
 # SchoolSetu Backend Documentation
 
-Express + Prisma API for SchoolSetu: auth, taxonomy, schools, inquiries, uploads, moderation, admin tools, audit logging, AI recommendations, and (disabled) Razorpay hooks.
+**Last Updated:** May 17, 2026
+
+Express + Prisma API for SchoolSetu: **auth (JWT, bcrypt, email/phone OTP, Google)**, taxonomy, schools, inquiries, uploads, moderation, admin tools, audit logging, AI recommendations, and (disabled) Razorpay hooks.
 
 ---
 
 ## Purpose
 
-- Serve JSON under `/api` for the Next.js app.
+- Serve JSON under **`/api`** for the Next.js app.
 - Persist schools, taxonomy, inquiries, pending profile updates, blog posts, and audit logs in PostgreSQL.
-- Optional integrations when env vars exist: Twilio (OTP/notifications), Cloudinary (images), OpenAI (`/ai`), Resend (email).
+- Optional integrations when env vars exist: **Twilio** (SMS — only if **`TWILIO_ACCOUNT_SID`** is set), **SMTP/nodemailer** (if **`SMTP_HOST`** is set), Cloudinary (images), OpenAI (`/ai`), Resend (email fallback where wired).
 
 ---
 
@@ -19,14 +21,19 @@ Express + Prisma API for SchoolSetu: auth, taxonomy, schools, inquiries, uploads
 | `express` | HTTP app and routers |
 | `typescript` | Types across controllers and services |
 | `tsx` | Dev server / scripts |
-| `prisma`, `@prisma/client` | Schema, migrations, DB access |
+| `prisma`, `@prisma/client` | Schema at **`prisma/schema.prisma`**, migrations, DB access; client generated to **`src/generated/prisma`** |
 | `zod` | Request validation |
-| `jsonwebtoken` | JWT for `Bearer` auth |
-| `helmet`, `cors`, `express-rate-limit` | Security and throttling (`otpRateLimit` on OTP endpoints) |
+| **`bcrypt`** | Password hashing |
+| `jsonwebtoken` | JWT for `Bearer` auth (**7-day** expiry; payload **`id`**, **`role`**, **`email`**, **`phone`**, **`name`**) |
+| **`nodemailer`** | Optional SMTP email (OTP / notifications when **`SMTP_HOST`** configured) |
+| `helmet`, `cors`, `express-rate-limit` | Security and throttling (`otpRateLimit` on sensitive auth endpoints) |
 | `morgan` | Request logging |
 | `winston` | Structured logging (`src/config/logger.ts`) |
+| `twilio` | SMS when configured |
 
 `pino` is listed in `package.json` but the app imports **Winston** from `logger.ts`.
+
+**Dev dependencies:** `@types/bcrypt`, `@types/nodemailer`, etc.
 
 ---
 
@@ -36,6 +43,10 @@ Express + Prisma API for SchoolSetu: auth, taxonomy, schools, inquiries, uploads
 backend/
 ├── Backend.md
 ├── package.json
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
 ├── tsconfig.json
 ├── eslint.config.mjs
 └── src/
@@ -56,14 +67,12 @@ backend/
     │   ├── schools.controller.ts
     │   └── taxonomy.controller.ts
     ├── data/mock-schools.ts   # Helpers for listing/query shapes (historical filename)
+    ├── generated/prisma/      # Prisma client output (see generator block in schema)
     ├── middleware/
     │   ├── auth.ts            # requireAuth, requireRole
     │   ├── audit.middleware.ts # Present but not registered in app.ts
     │   ├── error-handler.ts
     │   └── security.ts        # cors, helmet, apiRateLimit, otpRateLimit
-    ├── prisma/
-    │   ├── schema.prisma
-    │   └── seed.ts
     ├── routes/
     │   ├── index.ts           # Mounts routers; public blog GETs registered here before /admin
     │   ├── admin.routes.ts
@@ -77,9 +86,10 @@ backend/
     │   └── taxonomy.routes.ts
     ├── services/
     │   ├── ai.service.ts
-    │   ├── audit.service.ts    # createAuditLog, extractActor
+    │   ├── audit.service.ts      # createAuditLog, extractActor
     │   ├── cloudinary.service.ts
-    │   ├── otpService.ts       # Twilio OTP; dev OTP path when Twilio absent
+    │   ├── otpService.ts         # Twilio when configured; dev/terminal path otherwise
+    │   ├── smtp.service.ts       # Optional SMTP (when SMTP_HOST set)
     │   ├── razorpay.service.ts
     │   ├── resend.service.ts
     │   └── twilioService.ts
@@ -92,7 +102,7 @@ backend/
 
 ## Environment
 
-Load variables from **`backend/.env`** (standard local setup). `env.ts` validates required and optional vars. Minimum for core behavior:
+Load variables from **`backend/.env`**. `env.ts` validates required and optional vars. Minimum for core behaviour:
 
 | Variable | Notes |
 | --- | --- |
@@ -101,52 +111,127 @@ Load variables from **`backend/.env`** (standard local setup). `env.ts` validate
 | `FRONTEND_URL` | Allowed CORS origin |
 | `PORT` | API port (default in dev) |
 
-Optional: `CLOUDINARY_*`, Twilio vars, `OPENAI_API_KEY`, Resend keys, Razorpay keys (`SCHOOL_REGISTRATION_EMAIL`, `ADMIN_NOTIFICATION_PHONE`, etc.). Missing providers cause graceful skips (e.g. upload returns 503 without Cloudinary; AI falls back where implemented).
+**Optional — email (OTP, mail):**
+
+| Variable | Notes |
+| --- | --- |
+| `SMTP_HOST` | **SMTP** host — **`smtp.service`** treats SMTP as configured only when **`SMTP_HOST`**, **`SMTP_PORT`**, **`SMTP_USER`**, and **`SMTP_PASS`** are all set |
+| `SMTP_PORT` | SMTP port |
+| `SMTP_USER` / `SMTP_PASS` | Credentials |
+
+**Optional — SMS:**
+
+| Variable | Notes |
+| --- | --- |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, … | **Twilio is disabled** unless `TWILIO_ACCOUNT_SID` (and related) are present |
+
+Other optional: `CLOUDINARY_*`, `OPENAI_API_KEY`, Resend keys, Razorpay keys (`SCHOOL_REGISTRATION_EMAIL`, `ADMIN_NOTIFICATION_PHONE`, etc.). Missing providers cause graceful skips (e.g. upload returns 503 without Cloudinary; AI falls back where implemented).
 
 ---
 
-## Authentication
+## Authentication (rebuilt)
 
-- **`POST /api/auth/send-otp`** — Validates `+91` mobile; OTP via Twilio when configured; stricter **`otpRateLimit`**; may return **`devOtp`** in development when OTP is mocked.
-- **`POST /api/auth/verify-otp`** — Verifies OTP (via `otpService`), upserts **`User`** by phone, optional `role` for new users (`school` vs default **parent**), returns **JWT** `{ id, role, phone }` embedded in HS256 token (7-day expiry).
-- **`POST /api/auth/google`** — Upsert by `googleId` / email from **NextAuth** bridge; JWT same shape (`phone` may be absent).
+All routes below are prefixed with **`/api/auth`** (see `auth.routes.ts`).
 
-Protected routes use header **`Authorization: Bearer <jwt>`**.
+### Endpoints
 
-`middleware/auth.ts`:
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/register/parent` | **name**, **email**, **password**, **phone (optional)** → creates/updates user path → sends **email OTP** (`OtpType.EMAIL_VERIFY`). |
+| POST | `/register/school` | Multi-field **school + owner** registration → **email OTP**. |
+| POST | `/verify-email-otp` | **email** + **otp** → sets **`isEmailVerified`**, returns **JWT**. |
+| POST | `/login` | **email** + **password** → **JWT** if **`isEmailVerified`** (and password matches). |
+| POST | `/send-otp` | **phone** → OTP for phone login; **dev:** `[DEV OTP] Phone: … OTP: …`; **Twilio** if configured. |
+| POST | `/verify-otp` | **phone** + **otp** → verify, upsert user, **`isPhoneVerified`** as applicable → **JWT**. |
+| POST | `/forgot-password` | **email** → **password reset** OTP (`OtpType.PASSWORD_RESET`); **dev:** console / `[DEV EMAIL OTP]` style logging. |
+| POST | `/reset-password` | **email** + **otp** + **newPassword** → updates **`passwordHash`**. |
+| POST | `/google` | **googleId** + **email** + **name** → upsert user → **JWT**. |
 
-- **`requireAuth`** — Attaches `request.user`.
-- **`requireRole(...roles)`** — Ensures `user.role` is one of the listed roles (`parent` | `school` | `admin`).
+### JWT
 
-OTP storage uses Prisma model **`OtpCode`** (not legacy names).
+- **Header:** `Authorization: Bearer <token>`
+- **Expiry:** 7 days
+- **Payload claims:** `id`, `role`, `email`, `phone`, `name`
+
+### Passwords
+
+- Stored as **`passwordHash`** on **`User`** using **bcrypt**.
+
+### Middleware (`middleware/auth.ts`)
+
+- **`requireAuth`** — Attaches `request.user` from JWT.
+- **`requireRole(...roles)`** — Ensures `user.role` is one of **`parent`** | **`school`** | **`admin`**.
+
+### Development logging
+
+- **Email OTP:** e.g. `[DEV EMAIL OTP] To: user@example.com OTP: 123456` (see `auth.controller.ts`).
+- **Phone OTP:** `[DEV OTP] Phone: … OTP: …`.
+- **Twilio** activates only when **`TWILIO_ACCOUNT_SID`** exists.
+- **SMTP** activates when **`SMTP_HOST`** exists; otherwise email OTP is logged rather than sent, depending on branch (Resend may still apply in some code paths).
+
+### Seeded admin
+
+- **`npm run seed`** (`prisma/seed.ts`) creates an admin user **`adityak4724@gmail.com`** with password **`Admin@123`** (via **`ADMIN_DEFAULT_PASSWORD`**, bcrypt-hashed). Adjust the constant if you change credentials locally.
+
+---
+
+## Prisma: `User` and `OtpCode`
+
+### `User`
+
+- **`name`**, **`email`** (`String?`, **unique**), **`phone`** (`String?`, **unique**)
+- **`passwordHash`** (`String?`, mapped to `password_hash`)
+- **`googleId`** (`String?`, **unique**)
+- **`isEmailVerified`**, **`isPhoneVerified`** (booleans, default false)
+- **`role`**: **`UserRole`** enum — **`parent`** | **`school`** | **`admin`**
+- Relations: inquiries, owned schools, pending updates, etc.
+
+### `OtpCode`
+
+- **`identifier`**: email or phone string
+- **`type`**: **`OtpType`** — **`EMAIL_VERIFY`** | **`PHONE_LOGIN`** | **`PASSWORD_RESET`**
+- **`code`**, **`expiresAt`**, **`used`** (boolean)
 
 ---
 
 ## Route map (`/api` prefix)
 
+### Auth (`/api/auth`)
+
 | Method | Path | Auth | Behaviour |
 | --- | --- | --- | --- |
-| GET | `/health` | No | `{ status, service, env, twilio.configured, payments.enabled: false }` |
-| POST | `/auth/send-otp` | No | Send OTP |
-| POST | `/auth/verify-otp` | No | Verify + JWT; admin OTP triggers **`ADMIN_LOGIN`** audit |
-| POST | `/auth/google` | No | Google-linked JWT |
+| POST | `/auth/register/parent` | No | Parent registration + email OTP |
+| POST | `/auth/register/school` | No | School registration + email OTP |
+| POST | `/auth/verify-email-otp` | No | Verify email, JWT |
+| POST | `/auth/login` | No | Email/password JWT |
+| POST | `/auth/send-otp` | No | Phone OTP |
+| POST | `/auth/verify-otp` | No | Phone OTP verify, JWT |
+| POST | `/auth/forgot-password` | No | Reset OTP |
+| POST | `/auth/reset-password` | No | New password |
+| POST | `/auth/google` | No | Google upsert, JWT |
+
+### Core API
+
+| Method | Path | Auth | Behaviour |
+| --- | --- | --- | --- |
+| GET | `/health` | No | `{ status, service, env, twilio.configured, payments.enabled: false }` (shape as implemented) |
 | GET | `/admin/blog` | No | Published blog posts (`BlogPost.publishedAt` set) |
 | GET | `/admin/blog/:slug` | No | Single published post |
-| GET | `/schools` | No | Approved schools list; **`limit` max 1000**, pagination, filters (see controller) |
-| GET | `/schools/me` | Yes | Owner’s school with relations |
+| GET | `/schools` | No | **Approved** schools only; **`limit` max 1000**, pagination, filters |
+| GET | `/schools/me` | Yes | Owner’s school + relations (**school** user) |
 | GET | `/schools/:slug` | No | Approved school detail by slug |
-| POST | `/schools` | Yes | **Transaction**: creates **`School`** (status **pending**) + nested rows; bumps user role toward **school**; notifications best-effort |
-| PUT | `/schools/:id` | Yes, **school** or **admin** | Loads current profile snapshot; **`PendingUpdate`** row `fieldType: "profile"` with `oldValue` / `newValue` JSON (includes gallery + sections summaries). **Always** queues moderation — same path for admins (no shortcut here). |
+| POST | `/schools` | Yes | Transaction: creates **`School`** (often **`pending`**) + nested rows; see controller for conflicts |
+| PUT | `/schools/:id` | **school** or **admin** | **`PendingUpdate`** profile payload (always queues moderation on this path) |
 | GET | `/inquiries` | **admin** | Platform-wide inquiries |
 | GET | `/inquiries/for-school` | **school**, **admin** | Inquiries for the caller’s owned school |
 | GET | `/inquiries/my` | **parent** | Caller’s inquiries |
-| POST | `/inquiries` | **parent** | Create; **409** if duplicate within last **7 days** for same parent+school (`classApplying` from body) |
-| PUT | `/inquiries/:id/status` | **school**, **admin** | Inquiry status (**new** \| **contacted** \| **interested** \| **converted** \| **closed**) |
+| POST | `/inquiries` | **parent** | Create; **409** if duplicate within last **7 days** (same parent+school + class) |
+| PUT | `/inquiries/:id/status` | **school**, **admin** | Inquiry status |
 | POST | `/inquiries/:id/notes` | **school**, **admin** | Add **`InquiryNote`** |
-| POST | `/ai/recommend` | No | Recommendation payload (uses OpenAI when configured) |
-| POST | `/upload/image` | **school**, **admin** | Body **`{ imageBase64 }`** (data URI or raw base64). Cloudinary upload; **503** if not configured |
+| POST | `/ai/recommend` | No | Recommendation payload (OpenAI when configured) |
+| POST | `/upload/image` | **school**, **admin** | Body **`{ imageBase64 }`** → Cloudinary; **503** if not configured |
 | DELETE | `/upload/image/:id` | **school**, **admin** | **`school_gallery` id** — deletes Cloudinary asset (when inferable) and DB row |
-| POST | `/payments/create-order` | — | **`503` “Payments coming soon”** wrapper (handlers not reached live) |
+| POST | `/payments/create-order` | — | **`503`** wrapper |
 | POST | `/payments/verify-payment` | — | Same |
 | POST | `/payments/webhook` | — | Same |
 | GET | `/search` | No | Delegates to same **`listSchools`** as **`GET /schools`** |
@@ -164,11 +249,11 @@ All mounted routes require **`requireAuth` + requireRole("admin")`** unless note
 | GET | `/schools` | All schools |
 | POST | `/schools` | Admin-created school |
 | PUT | `/schools/:id/approve`, `/reject` | Approve pending school / reject (`SCHOOL_VERIFIED` / `SCHOOL_REJECTED` audits) |
-| PUT | `/schools/:id/edit` | **Direct** **`prisma.school.update`** with request body (`SCHOOL_EDITED`). Does **not** go through **`PendingUpdate`** queue (shallow **`School`**-model fields only; nested relations belong in moderation payloads or migrations). |
+| PUT | `/schools/:id/edit` | **Direct** **`prisma.school.update`** (`SCHOOL_EDITED`). Does **not** use **`PendingUpdate`** queue. |
 | DELETE | `/schools/:id` | Delete |
 | PUT | `/schools/:id/toggle-featured` | Featured flag |
 | GET | `/moderation` | Pending **`PendingUpdate`** queue |
-| PUT | `/moderation/:id/approve` | Approve and **merge** payload into **`School`** and related rows (gallery/sections/details/fees/address as implemented) |
+| PUT | `/moderation/:id/approve` | Approve and merge payload into **`School`** and related rows |
 | PUT | `/moderation/:id/reject` | Reject pending item |
 | GET | `/audit-logs/stats`, `/audit-logs` | Audit listing + aggregates |
 | POST | `/blog` | Create **`BlogPost`** |
@@ -179,18 +264,20 @@ All mounted routes require **`requireAuth` + requireRole("admin")`** unless note
 
 ## Blog (`blog.controller.ts`)
 
-- **Public reads** attach to **`apiRouter`** in **`routes/index.ts`** **`before`** `apiRouter.use("/admin", …)` so paths are **`/api/admin/blog`** without admin JWT.
+- **Public reads** attach to **`apiRouter`** in **`routes/index.ts`** **before** `apiRouter.use("/admin", …)` so paths are **`/api/admin/blog`** without admin JWT.
 - **Writes** stay on **`adminRouter`** (`/api/admin/blog`).
 
 ---
 
 ## Schools controller (high level)
 
-- **`listSchools`** — Approved-only public listing; query params validated with **`limit`** 1–**1000**; **`sort`** includes **`newest`** where wired in controller.
-- **`getSchool`** — By slug for approved schools.
+- **`listSchools`** — **Approved-only** public listing; query params validated with **`limit`** 1–**1000**; **`sort`** includes **`newest`** where wired.
+- **`getSchool`** — By slug for **approved** schools.
 - **`getMySchool`** — Owner (**`school`**) resolves via **`School.ownerId`**.
-- **`createSchool`** — See transaction above; rejects second school per owner (**409**).
-- **`updateSchool`** — Builds **`oldValue`** from DB; **`PendingUpdate`** with **`newValue`** body; responds with **`pendingUpdate`**. (**Admins who need immediate top-level **`School`** field mutations use **`PUT /api/admin/schools/:id/edit`** instead.**)
+- **`createSchool`** — Transaction creating nested rows; rejects second school per owner (**409**) where enforced.
+- **`updateSchool`** — Builds **`oldValue`** from DB; **`PendingUpdate`** with **`newValue`** body. (**Admins who need immediate top-level **`School`** field mutations use **`PUT /api/admin/schools/:id/edit`** instead.**)
+
+**Registration flow:** Owners typically register via **`POST /api/auth/register/school`**, verify email, and remain **`pending`** until **`PUT /api/admin/schools/:id/approve`**. Only **`approved`** schools are returned from **`GET /api/schools`** and **`GET /api/schools/:slug`**.
 
 Gallery entries for the dashboard combine **upload** (returns **`secure_url`**) then **school update** payloads that submit new **`gallery`** arrays in **`newValue`**; approve flow reconciles deletes vs Cloudinary URLs per **`admin.controller.ts`**.
 
@@ -199,7 +286,7 @@ Gallery entries for the dashboard combine **upload** (returns **`secure_url`**) 
 ## Media controller
 
 - **`POST /api/upload/image`** — Validates **`imageBase64`** via Zod; accepts **`data:image/…;base64,…`** or raw base64.
-- **`DELETE /api/upload/image/:id`** — **`SchoolGallery`** id; **`assertSchoolAccess`** enforces ownership (or admin behaviour as implemented in **`schools.controller`**).
+- **`DELETE /api/upload/image/:id`** — **`SchoolGallery`** id; **`assertSchoolAccess`** enforces ownership (or admin behaviour as implemented).
 
 ---
 
@@ -224,7 +311,7 @@ All **`paymentsRouter`** entry points wrap handlers with **`paymentsDisabled`** 
 
 There are **no** separate inquiry/user/team enum members in the schema; do not invent them in docs.
 
-- **`auth.controller`** logs **`ADMIN_LOGIN`** after OTP verify for admins.
+- **`auth.controller`** logs **`ADMIN_LOGIN`** after successful **`POST /auth/login`** when **`user.role === "admin"`**, and after **`POST /auth/verify-otp`** when the resulting user is an **admin**.
 - **`admin.controller`** logs school lifecycle actions aligned with **`AuditAction`** where applied.
 
 **`middleware/audit.middleware.ts`** exists **but is not** `app.use`’d globally — auditing is explicit from controllers/services, not middleware today.
@@ -242,7 +329,7 @@ There are **no** separate inquiry/user/team enum members in the schema; do not i
 - **Content / SEO:** `BlogPost`, `SeoPage`
 - **Compliance:** `AuditLog`
 
-Enums: **`UserRole`**, **`SchoolStatus`**, **`InquiryStatus`**, **`PendingUpdateStatus`**, **`GalleryType`**, **`AuditAction`**.
+Enums: **`UserRole`**, **`OtpType`**, **`SchoolStatus`** (`pending`, `approved`, `rejected`), **`InquiryStatus`**, **`PendingUpdateStatus`**, **`GalleryType`**, **`AuditAction`**.
 
 ---
 
@@ -251,10 +338,10 @@ Enums: **`UserRole`**, **`SchoolStatus`**, **`InquiryStatus`**, **`PendingUpdate
 | Script | Behaviour |
 | --- | --- |
 | `npm run dev` | `tsx watch src/server.ts` |
-| `npm run build` | Prisma generate + `tsc` |
+| `npm run build` | `prisma generate --schema=prisma/schema.prisma` + `tsc` |
 | `npm run typecheck` | Prisma generate + `tsc --noEmit` (on Windows EPERM errors during **`prisma generate`**, rerun or use codegen outside locked folders) |
-| `npm run seed` | `tsx src/prisma/seed.ts` |
-| `prisma:migrate` | Migrate dev |
+| `npm run seed` | `tsx prisma/seed.ts` |
+| `prisma:migrate` | `prisma migrate dev --schema=prisma/schema.prisma` |
 
 ---
 

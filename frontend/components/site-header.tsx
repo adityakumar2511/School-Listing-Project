@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import { FiLogOut, FiMessageCircle, FiUser, FiX } from "react-icons/fi";
+import { FiLogOut, FiUser, FiX } from "react-icons/fi";
 import { MdMenu, MdSchool } from "react-icons/md";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { clearAuthToken, getAuthToken } from "@/lib/auth-token";
 
 const nav = [
@@ -16,34 +16,51 @@ const nav = [
   { href: "/for-schools", label: "For Schools" },
 ];
 
-/** Decode the role claim from a JWT without a library. */
-function getRoleFromToken(token: string): string | null {
+type JwtMinimal = {
+  role?: string;
+  name?: string;
+  email?: string;
+};
+
+function decodeJwtPayload(token: string): JwtMinimal | null {
   try {
-    return (JSON.parse(atob(token.split(".")[1] ?? "")) as { role?: string }).role ?? null;
+    return JSON.parse(atob(token.split(".")[1] ?? "")) as JwtMinimal;
   } catch {
     return null;
   }
 }
 
+function displayNameFromPayload(p: JwtMinimal | null): string {
+  const n = p?.name?.trim();
+  if (n) return n;
+  const e = p?.email?.trim();
+  if (e) return e.split("@")[0] ?? "Account";
+  return "Account";
+}
+
+function roleBadgeTone(
+  role: string,
+): "blue" | "amber" | "success" | "neutral" | "danger" {
+  if (role === "admin") return "danger";
+  if (role === "school") return "blue";
+  if (role === "parent") return "success";
+  return "neutral";
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
-  const [localToken, setLocalToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
-  // Re-read localStorage whenever the NextAuth session changes.
-  // SessionBridge may have just written the backendToken there.
   useEffect(() => {
-    setLocalToken(getAuthToken());
-  }, [status, session?.backendToken]);
+    setToken(getAuthToken());
+  }, [pathname]);
 
-  // Close menu on route change
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
 
-  // Close on outside click
   useEffect(() => {
     if (!isMenuOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -55,23 +72,14 @@ export function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen]);
 
-  // Prefer NextAuth session; fall back to a stored backend JWT
-  const isLoggedIn = status === "authenticated" || Boolean(localToken);
-  const displayName =
-    session?.user?.name ??
-    session?.user?.email?.split("@")[0] ??
-    (localToken ? "My Account" : null);
-  const role =
-    session?.backendUser?.role ??
-    (localToken ? getRoleFromToken(localToken) : null);
+  const payload = token ? decodeJwtPayload(token) : null;
+  const isLoggedIn = Boolean(token);
+  const displayName = payload ? displayNameFromPayload(payload) : "";
+  const role = payload?.role?.trim();
 
   function handleLogout() {
     clearAuthToken();
-    if (status === "authenticated") {
-      void signOut({ callbackUrl: "/" });
-    } else {
-      window.location.href = "/";
-    }
+    window.location.href = "/";
   }
 
   return (
@@ -80,7 +88,6 @@ export function SiteHeader() {
       className="sticky top-0 z-40 border-b border-[#D3D1C7] bg-white/95 backdrop-blur"
     >
       <div className="container-shell flex h-16 items-center justify-between gap-4">
-        {/* Logo */}
         <Link
           href="/"
           className="flex items-center gap-2 font-heading text-xl font-bold text-[#0C447C]"
@@ -91,7 +98,6 @@ export function SiteHeader() {
           SchoolSetu
         </Link>
 
-        {/* Desktop nav */}
         <nav className="hidden items-center gap-6 text-sm font-medium text-[#2C2C2A] md:flex">
           {nav.map((item) => (
             <Link
@@ -106,49 +112,35 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        {/* Right actions */}
         <div className="flex items-center gap-2">
-          {isLoggedIn ? (
-            /* Logged-in state */
+          {isLoggedIn && role ? (
             <div className="hidden items-center gap-2 sm:flex">
-              {/* Role shortcut links */}
-              {role === "admin" && (
-                <Link href="/admin" className="text-xs font-semibold text-[#185FA5] hover:underline">
-                  Admin
-                </Link>
-              )}
-              {role === "school" && (
-                <Link href="/school/dashboard" className="text-xs font-semibold text-[#185FA5] hover:underline">
-                  Dashboard
-                </Link>
-              )}
-              {/* User pill */}
-              <div className="flex items-center gap-1.5 rounded-full border border-[#D3D1C7] bg-[#F1EFE8] px-3 py-1.5">
-                <FiUser size={14} className="text-[#55534e]" />
+              <div className="flex items-center gap-2 rounded-full border border-[#D3D1C7] bg-[#F1EFE8] px-3 py-1.5">
+                <FiUser size={14} className="text-[#55534e]" aria-hidden />
                 <span className="max-w-[120px] truncate text-xs font-medium text-[#2C2C2A]">
                   {displayName}
                 </span>
+                <Badge tone={roleBadgeTone(role)} className="capitalize">
+                  {role}
+                </Badge>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleLogout}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D3D1C7] text-[#55534e] transition hover:border-[#A32D2D] hover:text-[#A32D2D]"
-                title="Sign out"
+                className="gap-1.5 text-[#A32D2D] hover:border-[#A32D2D]"
               >
-                <FiLogOut size={15} />
-              </button>
+                <FiLogOut size={14} aria-hidden />
+                Logout
+              </Button>
             </div>
           ) : (
-            /* Logged-out state */
             <Button asChild variant="amber" className="hidden sm:inline-flex">
-              <Link href="/auth/parent/login">
-                <FiMessageCircle size={17} />
-                Login
-              </Link>
+              <Link href="/auth/login">Login</Link>
             </Button>
           )}
 
-          {/* Hamburger toggle — mobile only */}
           <button
             type="button"
             onClick={() => setIsMenuOpen((v) => !v)}
@@ -161,7 +153,6 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Mobile slide-down menu */}
       {isMenuOpen && (
         <div className="absolute left-0 right-0 top-full z-50 border-b border-[#D3D1C7] bg-white shadow-lg md:hidden">
           <nav className="flex flex-col py-2">
@@ -180,55 +171,34 @@ export function SiteHeader() {
 
             <div className="mx-6 my-2 border-t border-[#D3D1C7]" />
 
-            {isLoggedIn ? (
+            {isLoggedIn && role ? (
               <>
-                <span className="px-6 py-2 text-xs font-medium text-[#888780]">
-                  Signed in as {displayName}
+                <span className="flex flex-wrap items-center gap-2 px-6 py-2 text-xs font-medium text-[#888780]">
+                  <span>Signed in as {displayName}</span>
+                  <Badge tone={roleBadgeTone(role)} className="capitalize">
+                    {role}
+                  </Badge>
                 </span>
-                {role === "admin" && (
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-6 py-3 text-sm font-semibold text-[#185FA5] transition hover:bg-[#F1EFE8]"
-                  >
-                    Admin Panel
-                  </Link>
-                )}
-                {role === "school" && (
-                  <Link
-                    href="/school/dashboard"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-6 py-3 text-sm font-semibold text-[#185FA5] transition hover:bg-[#F1EFE8]"
-                  >
-                    School Dashboard
-                  </Link>
-                )}
                 <button
                   type="button"
-                  onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleLogout();
+                  }}
                   className="mx-6 mb-3 mt-1 flex items-center justify-center gap-2 rounded-lg border border-[#D3D1C7] px-4 py-2.5 text-sm font-semibold text-[#A32D2D] transition hover:border-[#A32D2D] hover:bg-[#FCE8E8]"
                 >
                   <FiLogOut size={15} />
-                  Sign Out
+                  Logout
                 </button>
               </>
             ) : (
-              <>
-                <Link
-                  href="/auth/parent/login"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-[#185FA5] transition hover:bg-[#F1EFE8]"
-                >
-                  Parent Login
-                </Link>
-                <Link
-                  href="/auth/school/login"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="mx-6 mb-3 mt-1 flex items-center justify-center rounded-lg border border-[#D3D1C7] px-4 py-2.5 text-sm font-semibold text-[#2C2C2A] transition hover:border-[#185FA5] hover:text-[#185FA5]"
-                >
-                  School Admin Login
-                </Link>
-              </>
+              <Link
+                href="/auth/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="mx-6 mb-3 mt-1 flex items-center justify-center rounded-lg bg-[#EF9F27] px-4 py-2.5 text-sm font-semibold text-[#633806]"
+              >
+                Login
+              </Link>
             )}
           </nav>
         </div>

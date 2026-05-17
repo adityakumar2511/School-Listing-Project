@@ -1,49 +1,50 @@
 import { randomInt } from "node:crypto";
+import { OtpType } from "../generated/prisma/index.js";
 import { prisma } from "../config/prisma.js";
-import { logger } from "../config/logger.js";
-import { env } from "../config/env.js";
-import { sendSMS } from "./twilioService.js";
 
-const OTP_EXPIRY_MINUTES = 10;
+const OTP_EXPIRY_MINUTES_DEFAULT = 10;
 
 export function generateOTP(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-export type SendOTPResult =
-  | { sent: true }
-  | { sent: false; devOtp?: string };
-
-export async function sendOTP(phone: string): Promise<SendOTPResult> {
+/**
+ * Invalidate prior unused OTPs for this identifier+type, persist a fresh code.
+ */
+export async function persistOtpCode(
+  identifier: string,
+  type: OtpType,
+  expiryMinutes: number = OTP_EXPIRY_MINUTES_DEFAULT
+): Promise<string> {
   const code = generateOTP();
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
   await prisma.otpCode.updateMany({
-    where: { phone, used: false },
+    where: { identifier, type, used: false },
     data: { used: true },
   });
 
   await prisma.otpCode.create({
-    data: { phone, code, expiresAt },
+    data: {
+      identifier,
+      code,
+      type,
+      expiresAt,
+    },
   });
 
-  if (!env.TWILIO_ACCOUNT_SID) {
-    logger.warn("[OTP] Twilio not configured - OTP not sent via SMS");
-    if (env.NODE_ENV === "development") {
-      logger.info(`[OTP DEV] Code for ${phone}: ${code}`);
-      return { sent: false, devOtp: code };
-    }
-    return { sent: false };
-  }
-
-  await sendSMS(phone, `Your SchoolSetu verification code is: ${code}. Valid for 10 minutes.`);
-  return { sent: true };
+  return code;
 }
 
-export async function verifyOTP(phone: string, code: string): Promise<boolean> {
+export async function verifyAndConsumeOtp(
+  identifier: string,
+  type: OtpType,
+  code: string
+): Promise<boolean> {
   const record = await prisma.otpCode.findFirst({
     where: {
-      phone,
+      identifier,
+      type,
       code,
       used: false,
       expiresAt: { gt: new Date() },

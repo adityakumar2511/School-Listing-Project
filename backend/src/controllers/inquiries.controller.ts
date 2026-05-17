@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma/index.js";
 import { z } from "zod";
 import { logger } from "../config/logger.js";
 import { prisma } from "../config/prisma.js";

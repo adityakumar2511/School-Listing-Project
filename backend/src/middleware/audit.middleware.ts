@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { AuditAction } from "@prisma/client";
+import { AuditAction } from "../generated/prisma/index.js";
 import { createAuditLog, extractActor } from "../services/audit.service.js";
 
 type TargetInfoFn = (

@@ -1,5 +1,7 @@
 generator client {
   provider = "prisma-client-js"
+  // Avoid hoisted repo-root node_modules/.prisma (Windows EPERM on query_engine rename in some setups).
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -11,6 +13,12 @@ enum UserRole {
   parent
   school
   admin
+}
+
+enum OtpType {
+  EMAIL_VERIFY
+  PHONE_LOGIN
+  PASSWORD_RESET
 }
 
 enum SchoolStatus {
@@ -39,13 +47,17 @@ enum GalleryType {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
-  phone     String?  @unique
-  role      UserRole @default(parent)
-  googleId  String?  @unique @map("google_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  name            String?
+  email           String?  @unique
+  phone           String?  @unique
+  passwordHash    String?  @map("password_hash")
+  googleId        String?  @unique @map("google_id")
+  role            UserRole @default(parent)
+  isEmailVerified Boolean  @default(false) @map("is_email_verified")
+  isPhoneVerified Boolean  @default(false) @map("is_phone_verified")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   inquiries      Inquiry[]       @relation("ParentInquiries")
   inquiryNotes   InquiryNote[]
@@ -58,14 +70,15 @@ model User {
 }
 
 model OtpCode {
-  id        String   @id @default(cuid())
-  phone     String
-  code      String
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  identifier String
+  code       String
+  type       OtpType
+  expiresAt  DateTime @map("expires_at")
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  @@index([phone, code, used])
+  @@index([identifier, type, code, used])
   @@index([expiresAt])
   @@map("otp_codes")
 }
@@ -100,6 +113,8 @@ model Board {
   @@map("boards")
 }
 
+// Listing profile: public name is `name` (API alias schoolName), category is `type` (API alias schoolType).
+// Principal, founded year, and public website live on SchoolDetails (API: principalName, established, website).
 model School {
   id          String       @id @default(cuid())
   name        String
@@ -115,30 +130,33 @@ model School {
   isFeatured  Boolean      @default(false) @map("is_featured")
   createdAt   DateTime     @default(now()) @map("created_at")
 
-  city              City              @relation(fields: [cityId], references: [id])
-  board             Board             @relation(fields: [boardId], references: [id])
-  owner             User?             @relation("SchoolOwner", fields: [ownerId], references: [id])
-  details           SchoolDetails?
-  address           SchoolAddress?
-  academics         SchoolAcademics?
-  fees              SchoolFees?
-  facilities        SchoolFacilities?
-  gallery           SchoolGallery[]
-  sections          SchoolSection[]
-  achievements      SchoolAchievement[]
-  inquiries         Inquiry[]
-  pendingUpdates    PendingUpdate[]
-  featuredListings  FeaturedListing[]
-  payments          Payment[]
+  city             City              @relation(fields: [cityId], references: [id])
+  board            Board             @relation(fields: [boardId], references: [id])
+  owner            User?             @relation("SchoolOwner", fields: [ownerId], references: [id])
+  details          SchoolDetails?
+  address          SchoolAddress?
+  academics        SchoolAcademics?
+  fees             SchoolFees?
+  facilities       SchoolFacilities?
+  gallery          SchoolGallery[]
+  sections         SchoolSection[]
+  achievements     SchoolAchievement[]
+  inquiries        Inquiry[]
+  pendingUpdates   PendingUpdate[]
+  featuredListings FeaturedListing[]
+  payments         Payment[]
 
   @@map("schools")
 }
 
 model SchoolDetails {
   schoolId        String  @id @map("school_id")
+  /// API: principalName
   principalName   String? @map("principal_name")
+  /// Founding year (API: established)
   establishedYear Int?    @map("established_year")
   affiliationNo   String? @map("affiliation_no")
+  /// API: website
   website         String?
   email           String?
   phone           String?
@@ -163,16 +181,16 @@ model SchoolAddress {
 }
 
 model SchoolAcademics {
-  schoolId          String   @id @map("school_id")
+  schoolId          String    @id @map("school_id")
   streams           String[]
-  classesFrom       String   @map("classes_from")
-  classesTo         String   @map("classes_to")
-  admissionOpen     Boolean  @default(false) @map("admission_open")
+  classesFrom       String    @map("classes_from")
+  classesTo         String    @map("classes_to")
+  admissionOpen     Boolean   @default(false) @map("admission_open")
   admissionStart    DateTime? @map("admission_start")
   admissionEnd      DateTime? @map("admission_end")
-  documentsRequired String[] @map("documents_required")
-  ageCriteria       String?  @map("age_criteria")
-  school            School   @relation(fields: [schoolId], references: [id])
+  documentsRequired String[]  @map("documents_required")
+  ageCriteria       String?   @map("age_criteria")
+  school            School    @relation(fields: [schoolId], references: [id])
 
   @@map("school_academics")
 }
@@ -283,18 +301,18 @@ model InquiryNote {
 }
 
 model PendingUpdate {
-  id          String              @id @default(cuid())
-  schoolId    String              @map("school_id")
-  fieldType   String              @map("field_type")
-  oldValue    Json?               @map("old_value")
-  newValue    Json                @map("new_value")
-  submittedBy String              @map("submitted_by")
-  status      PendingUpdateStatus @default(pending)
-  reviewedBy  String?             @map("reviewed_by")
-  reviewedAt  DateTime?           @map("reviewed_at")
-  school      School              @relation(fields: [schoolId], references: [id])
-  submitter   User                @relation("SubmittedUpdates", fields: [submittedBy], references: [id])
-  reviewer    User?               @relation("ReviewedUpdates", fields: [reviewedBy], references: [id])
+  id           String              @id @default(cuid())
+  schoolId     String              @map("school_id")
+  fieldType    String              @map("field_type")
+  oldValue     Json?               @map("old_value")
+  newValue     Json                @map("new_value")
+  submittedBy  String              @map("submitted_by")
+  status       PendingUpdateStatus @default(pending)
+  reviewedBy   String?             @map("reviewed_by")
+  reviewedAt   DateTime?           @map("reviewed_at")
+  school       School              @relation(fields: [schoolId], references: [id])
+  submitter    User                @relation("SubmittedUpdates", fields: [submittedBy], references: [id])
+  reviewer     User?               @relation("ReviewedUpdates", fields: [reviewedBy], references: [id])
   approvalLogs ApprovalLog[]
 
   @@map("pending_updates")
@@ -355,9 +373,9 @@ model BlogPost {
 }
 
 model SeoPage {
-  id                String @id @default(cuid())
-  pageType          String @map("page_type")
-  entityId          String @map("entity_id")
+  id                String  @id @default(cuid())
+  pageType          String  @map("page_type")
+  entityId          String  @map("entity_id")
   customTitle       String? @map("custom_title")
   customDescription String? @map("custom_description")
   customContent     String? @map("custom_content")

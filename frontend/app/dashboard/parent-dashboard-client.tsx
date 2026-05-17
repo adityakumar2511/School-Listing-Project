@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { FiBookmark, FiLoader, FiLogOut, FiMessageSquare, FiUser } from "react-icons/fi";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,7 @@ type InquiryRecord = {
   school: { id: string; name: string; slug: string; board?: { name: string } | null };
 };
 
-type JwtPayload = { id: string; role: string; phone?: string; name?: string };
+type JwtPayload = { id: string; role: string; phone?: string; name?: string; email?: string };
 
 const STATUS_TONE: Record<
   InquiryRecord["status"],
@@ -63,24 +62,26 @@ function formatDate(iso: string) {
 
 export function ParentDashboardClient() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const pathname = usePathname();
   const selectedIds = useCompareStore((state) => state.selectedIds);
   const [parentName, setParentName] = useState<string>("Parent");
   const [phone, setPhone] = useState<string>("");
 
-  // Resolve a friendly display name from session or JWT
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      router.replace("/auth/parent/login");
+      const q = new URLSearchParams({ redirect: pathname || "/dashboard" });
+      router.replace(`/auth/login?${q.toString()}`);
       return;
     }
     const payload = decodeJwt(token);
-    const sessionName = session?.user?.name?.trim();
-    if (sessionName) setParentName(sessionName);
-    else setParentName("Parent");
+    if (payload?.name?.trim()) setParentName(payload.name.trim());
+    else if (payload?.email?.trim()) {
+      const localPart = payload.email.trim().split("@")[0];
+      setParentName(localPart || "Parent");
+    } else setParentName("Parent");
     if (payload?.phone) setPhone(payload.phone);
-  }, [session?.user?.name, router]);
+  }, [pathname, router]);
 
   const inquiriesQuery = useQuery({
     queryKey: ["my-inquiries"],
@@ -95,11 +96,7 @@ export function ParentDashboardClient() {
 
   function handleLogout() {
     clearAuthToken();
-    if (session) {
-      void signOut({ callbackUrl: "/" });
-    } else {
-      router.push("/");
-    }
+    router.replace("/");
   }
 
   const inquiries = inquiriesQuery.data ?? [];

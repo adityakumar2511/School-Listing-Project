@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FiAlertCircle } from "react-icons/fi";
 import { MdHourglassEmpty } from "react-icons/md";
 import { Card } from "@/components/ui/card";
@@ -80,6 +80,7 @@ function fieldClass() {
 
 export function SchoolDashboardClient() {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const [noteModalId, setNoteModalId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
@@ -109,14 +110,16 @@ export function SchoolDashboardClient() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      router.replace("/auth/login");
+      const q = new URLSearchParams({ redirect: pathname || "/school/dashboard" });
+      router.replace(`/auth/login?${q.toString()}`);
       return;
     }
     const payload = JSON.parse(atob(token.split(".")[1] ?? "")) as { role?: string };
     if (payload.role && payload.role !== "school" && payload.role !== "admin") {
-      router.replace("/auth/login");
+      const q = new URLSearchParams({ redirect: pathname || "/school/dashboard" });
+      router.replace(`/auth/login?${q.toString()}`);
     }
-  }, [router]);
+  }, [pathname, router]);
 
   const mySchoolQuery = useQuery({
     queryKey: ["my-school"],
@@ -132,6 +135,7 @@ export function SchoolDashboardClient() {
   });
 
   const school = mySchoolQuery.data?.status === "found" ? mySchoolQuery.data.school : null;
+  const isApprovedSchool = school?.status === "approved";
 
   useEffect(() => {
     if (!school) return;
@@ -173,7 +177,7 @@ export function SchoolDashboardClient() {
       const payload = (await response.json()) as { data: InquiryRecord[] };
       return payload.data;
     },
-    enabled: Boolean(schoolId),
+    enabled: Boolean(schoolId) && isApprovedSchool,
   });
 
   const invalidateSchool = () => queryClient.invalidateQueries({ queryKey: ["my-school"] });
@@ -182,7 +186,7 @@ export function SchoolDashboardClient() {
     mutationFn: async (body: Record<string, unknown>) => {
       const response = await fetch(`${API_URL}/api/schools/${schoolId}`, {
         method: "PUT",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(body),
       });
       if (!response.ok) {
@@ -212,7 +216,7 @@ export function SchoolDashboardClient() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const response = await fetch(`${API_URL}/api/inquiries/${id}/status`, {
         method: "PUT",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ status }),
       });
       if (!response.ok) throw new Error("Status update failed");
@@ -224,7 +228,7 @@ export function SchoolDashboardClient() {
     mutationFn: async ({ id, note }: { id: string; note: string }) => {
       const response = await fetch(`${API_URL}/api/inquiries/${id}/notes`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ note }),
       });
       if (!response.ok) throw new Error("Could not save note");
@@ -259,7 +263,7 @@ export function SchoolDashboardClient() {
 
     const up = await fetch(`${API_URL}/api/upload/image`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ imageBase64: dataUrl }),
     });
     if (!up.ok) throw new Error("Upload failed");
@@ -345,110 +349,130 @@ export function SchoolDashboardClient() {
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#EF9F27] bg-[#FAEEDA] px-5 py-4">
           <MdHourglassEmpty className="mt-0.5 shrink-0 text-2xl text-[#633806]" aria-hidden />
           <div>
-            <p className="font-semibold text-[#633806]">Your school is under review.</p>
+            <p className="font-semibold text-[#633806]">
+              Your school is under admin review. You can fill in details below.
+            </p>
             <p className="mt-0.5 text-sm text-[#55534e]">
-              It will appear on the website once approved by our team. This usually takes 1–2 business days.
+              Approved listings typically go live within 1–2 business days.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {school?.status === "rejected" && (
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#F4C7C7] bg-[#FCE8E8] px-5 py-4">
+          <FiAlertCircle className="mt-0.5 shrink-0 text-2xl text-[#A32D2D]" aria-hidden />
+          <div>
+            <p className="font-semibold text-[#A32D2D]">Your school listing was not approved.</p>
+            <p className="mt-0.5 text-sm text-[#55534e]">
+              Review the feedback you received by email (if provided), update your profile below, and submit again for review.
+              If you need help, contact SchoolSetu support.
             </p>
           </div>
         </div>
       )}
 
       {school ? (
-        <Tabs defaultValue="overview" className="mt-10 w-full">
-          {formError ? (
-            <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {formError}
-            </p>
-          ) : null}
-          <TabsList className="h-auto flex-wrap rounded-xl md:w-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            <TabsTrigger value="sections">Sections</TabsTrigger>
-          </TabsList>
+        <>
+          {isApprovedSchool ? (
+            <div className="mt-10 space-y-8">
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <p className="font-semibold">Total inquiries</p>
+                  <p className="mt-2 text-3xl font-bold text-[#185FA5]">{inquiries.length}</p>
+                </Card>
+                <Card>
+                  <p className="font-semibold">New this week</p>
+                  <p className="mt-2 text-3xl font-bold text-[#185FA5]">{newThisWeek}</p>
+                </Card>
+                <Card>
+                  <p className="font-semibold">Profile views</p>
+                  <p className="mt-2 text-3xl font-bold text-[#185FA5]">—</p>
+                </Card>
+              </div>
 
-          <TabsContent value="overview" className="mt-8 space-y-8">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <p className="font-semibold">Total inquiries</p>
-                <p className="mt-2 text-3xl font-bold text-[#185FA5]">{inquiries.length}</p>
-              </Card>
-              <Card>
-                <p className="font-semibold">New this week</p>
-                <p className="mt-2 text-3xl font-bold text-[#185FA5]">{newThisWeek}</p>
-              </Card>
-              <Card>
-                <p className="font-semibold">Profile views</p>
-                <p className="mt-2 text-3xl font-bold text-[#185FA5]">—</p>
+              <Card className="flex items-start gap-4 rounded-2xl border border-[#D3D1C7] bg-[#FAEEDA] p-5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EF9F27]/20 text-[#633806]">
+                  ★
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-heading font-bold text-[#633806]">Get Featured Placement</p>
+                    <Badge tone="neutral">Coming soon</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-[#55534e]">
+                    Appear at the top of search results and receive more inquiries when payments return.
+                  </p>
+                </div>
+                <Button variant="amber" size="sm" disabled className="opacity-50">
+                  Upgrade
+                </Button>
               </Card>
             </div>
+          ) : null}
 
-            <Card className="flex items-start gap-4 rounded-2xl border border-[#D3D1C7] bg-[#FAEEDA] p-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EF9F27]/20 text-[#633806]">
-                ★
-              </div>
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-heading font-bold text-[#633806]">Get Featured Placement</p>
-                  <Badge tone="neutral">Coming soon</Badge>
-                </div>
-                <p className="mt-1 text-sm text-[#55534e]">
-                  Appear at the top of search results and receive more inquiries when payments return.
-                </p>
-              </div>
-              <Button variant="amber" size="sm" disabled className="opacity-50">
-                Upgrade
-              </Button>
-            </Card>
+          <Tabs defaultValue="profile" className="mt-10 w-full">
+            {formError ? (
+              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {formError}
+              </p>
+            ) : null}
+            <TabsList className="h-auto flex-wrap rounded-xl md:w-auto">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="gallery">Gallery</TabsTrigger>
+              {isApprovedSchool ? <TabsTrigger value="inquiries">Inquiries</TabsTrigger> : null}
+              <TabsTrigger value="sections">Sections</TabsTrigger>
+            </TabsList>
 
-            <section className="overflow-x-auto">
-              <h2 className="font-heading text-2xl font-bold text-[#0C447C]">Inquiries</h2>
-              <table className="mt-4 w-full min-w-[720px] border-collapse text-sm">
-                <thead>
-                  <tr className="bg-[#E6F1FB] text-left">
-                    <th className="p-3">Parent</th>
-                    <th className="p-3">Phone</th>
-                    <th className="p-3">Student</th>
-                    <th className="p-3">Class</th>
-                    <th className="p-3">Date</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Note</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inquiries.map((inquiry) => (
-                    <tr key={inquiry.id} className="border-t border-[#D3D1C7]">
-                      <td className="p-3">{inquiry.parent?.name ?? "Parent"}</td>
-                      <td className="p-3">{inquiry.parent?.phone ?? "—"}</td>
-                      <td className="p-3">{inquiry.studentName}</td>
-                      <td className="p-3">{inquiry.classApplying}</td>
-                      <td className="p-3">{new Date(inquiry.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        <select
-                          value={inquiry.status}
-                          onChange={(event) =>
-                            statusMutation.mutate({ id: inquiry.id, status: event.target.value })
-                          }
-                          className="rounded-lg border border-[#D3D1C7] px-2 py-1"
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-3">
-                        <Button variant="outline" size="sm" onClick={() => setNoteModalId(inquiry.id)}>
-                          Add note
-                        </Button>
-                      </td>
+            {isApprovedSchool ? (
+              <TabsContent value="inquiries" className="mt-8 overflow-x-auto">
+                <h2 className="font-heading text-2xl font-bold text-[#0C447C]">Inquiries</h2>
+                <table className="mt-4 w-full min-w-[720px] border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-[#E6F1FB] text-left">
+                      <th className="p-3">Parent</th>
+                      <th className="p-3">Phone</th>
+                      <th className="p-3">Student</th>
+                      <th className="p-3">Class</th>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Note</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </TabsContent>
+                  </thead>
+                  <tbody>
+                    {inquiries.map((inquiry) => (
+                      <tr key={inquiry.id} className="border-t border-[#D3D1C7]">
+                        <td className="p-3">{inquiry.parent?.name ?? "Parent"}</td>
+                        <td className="p-3">{inquiry.parent?.phone ?? "—"}</td>
+                        <td className="p-3">{inquiry.studentName}</td>
+                        <td className="p-3">{inquiry.classApplying}</td>
+                        <td className="p-3">{new Date(inquiry.createdAt).toLocaleDateString()}</td>
+                        <td className="p-3">
+                          <select
+                            value={inquiry.status}
+                            onChange={(event) =>
+                              statusMutation.mutate({ id: inquiry.id, status: event.target.value })
+                            }
+                            className="rounded-lg border border-[#D3D1C7] px-2 py-1"
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-3">
+                          <Button variant="outline" size="sm" onClick={() => setNoteModalId(inquiry.id)}>
+                            Add note
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TabsContent>
+            ) : null}
 
           <TabsContent value="profile" className="mt-8 max-w-2xl">
             {profileNotice ? (
@@ -714,6 +738,7 @@ export function SchoolDashboardClient() {
             </form>
           </TabsContent>
         </Tabs>
+        </>
       ) : null}
 
       {noteModalId ? (

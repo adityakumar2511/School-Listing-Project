@@ -167,7 +167,7 @@ export function SchoolRegisterForm() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      router.replace("/auth/school/login");
+      router.replace("/auth/login");
     }
   }, [router]);
 
@@ -717,7 +717,7 @@ export function SchoolRegisterForm() {
       {/* Footer */}
       <p className="mt-6 text-center text-sm text-[#888780]">
         Already have an account?{" "}
-        <Link href="/auth/school/login" className="font-semibold text-[#185FA5] hover:underline">
+        <Link href="/auth/login" className="font-semibold text-[#185FA5] hover:underline">
           Sign in →
         </Link>
       </p>

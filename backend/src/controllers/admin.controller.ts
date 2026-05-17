@@ -1,4 +1,4 @@
-import type { GalleryType, Prisma } from "@prisma/client";
+import type { GalleryType, Prisma } from "../generated/prisma/index.js";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
@@ -151,6 +151,10 @@ async function notifySchoolOfModerationResult(
     if (!school) return;
     const email = school.details?.email ?? school.owner?.email;
     if (!email) return;
+
+    if (env.NODE_ENV !== "production") {
+      console.log(`[School moderation email] to=${email} status=${status} school=${school.name}`);
+    }
 
     const subject =
       status === "approved"

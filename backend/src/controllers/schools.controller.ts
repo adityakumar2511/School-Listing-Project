@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma/index.js";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
@@ -74,7 +74,7 @@ const createSchoolSchema = z.object({
 
 const updateSchoolSchema = z.record(z.string(), z.unknown());
 
-function slugify(value: string) {
+export function slugify(value: string) {
   return value
     .toLowerCase()
     .trim()
@@ -82,11 +82,11 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function last10Digits(phone: string) {
+export function last10Digits(phone: string) {
   return phone.replace(/\D/g, "").slice(-10);
 }
 
-async function uniqueSchoolSlug(base: string) {
+export async function uniqueSchoolSlug(base: string) {
   let slug = slugify(base);
   let suffix = 0;
 
@@ -112,6 +112,33 @@ async function resolveCity(cityValue: string) {
     include: {
       state: true
     }
+  });
+}
+
+/** Resolve a city within a specific state (for registration / stricter matching). */
+export async function resolveCityAndState(cityValue: string, stateValue: string) {
+  const stateNorm = stateValue.trim();
+  const cityNorm = cityValue.trim();
+
+  const state = await prisma.state.findFirst({
+    where: {
+      OR: [
+        { slug: slugify(stateNorm) },
+        { name: { equals: stateNorm, mode: "insensitive" } },
+      ],
+    },
+  });
+  if (!state) return null;
+
+  return prisma.city.findFirst({
+    where: {
+      stateId: state.id,
+      OR: [
+        { slug: slugify(cityNorm) },
+        { name: { equals: cityNorm, mode: "insensitive" } },
+      ],
+    },
+    include: { state: true },
   });
 }
 
@@ -174,7 +201,21 @@ export const getMySchool = asyncHandler(async (request, response) => {
 
   if (!school) throw new HttpError(404, "No school registered to your account");
 
-  response.json({ data: school });
+  const established = school.details?.establishedYear ?? null;
+  const principalName = school.details?.principalName ?? null;
+  const website = school.details?.website ?? null;
+
+  response.json({
+    data: {
+      ...school,
+      status: school.status,
+      schoolName: school.name,
+      schoolType: school.type,
+      established,
+      principalName,
+      website,
+    },
+  });
 });
 
 export const listSchools = asyncHandler(async (request, response) => {
@@ -353,7 +394,7 @@ export const createSchool = asyncHandler(async (request, response) => {
   });
 });
 
-async function notifyAdminOfNewSchool(schoolName: string, cityName: string, phone: string) {
+export async function notifyAdminOfNewSchool(schoolName: string, cityName: string, phone: string) {
   const message = `New school registered on SchoolSetu: ${schoolName} (${cityName}). Contact: ${phone}. Pending review.`;
 
   // Email (Resend) — independent try/catch so a failure never blocks WhatsApp.

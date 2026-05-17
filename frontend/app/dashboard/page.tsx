@@ -1,5 +1,3 @@
-import { ParentDashboardClient } from "./parent-dashboard-client";
+"use client";
 
-export default function ParentDashboardPage() {
-  return <ParentDashboardClient />;
-}
+export { ParentDashboardClient as default } from "./parent-dashboard-client";

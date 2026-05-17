@@ -18,15 +18,20 @@ import { taxonomyRouter } from "./taxonomy.routes.js";
 export const apiRouter = Router();
 
 apiRouter.get("/health", (_request, response) => {
-  response.json({
+  const body: Record<string, unknown> = {
     status: "ok",
     service: "schoolsetu-api",
     env: env.NODE_ENV,
     twilio: { configured: isTwilioConfigured },
     payments: { enabled: false, reason: "Razorpay disabled in current build" },
-  });
+  };
+  if (env.NODE_ENV === "development") {
+    body.admin_email = "adityak4724@gmail.com";
+  }
+  response.json(body);
 });
 
+/** JWT-backed auth: /api/auth/register/*, login, OTP, forgot/reset password, Google bridge */
 apiRouter.use("/auth", authRouter);
 apiRouter.get("/admin/blog", listPublicBlogPosts);
 apiRouter.get("/admin/blog/:slug", getPublicBlogPostBySlug);

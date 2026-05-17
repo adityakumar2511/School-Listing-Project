@@ -5,21 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "prisma generate --schema=src/prisma/schema.prisma && tsc",
-    "postinstall": "prisma generate --schema=src/prisma/schema.prisma",
+    "build": "prisma generate --schema=prisma/schema.prisma && tsc",
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
-    "typecheck": "prisma generate --schema=src/prisma/schema.prisma && tsc --noEmit",
-    "seed": "tsx src/prisma/seed.ts",
-    "prisma:generate": "prisma generate --schema=src/prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma"
+    "typecheck": "prisma generate --schema=prisma/schema.prisma && tsc --noEmit",
+    "seed": "tsx prisma/seed.ts",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma"
   },
   "prisma": {
-    "schema": "src/prisma/schema.prisma",
-    "seed": "tsx src/prisma/seed.ts"
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -28,6 +29,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
+    "nodemailer": "^7.0.13",
     "openai": "^6.8.1",
     "pino": "^10.1.0",
     "prisma": "^6.19.0",
@@ -38,6 +40,8 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/nodemailer": "^8.0.0",
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
