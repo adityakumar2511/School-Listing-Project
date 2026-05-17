@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { FiLoader } from "react-icons/fi";
+import { MdSchool } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -102,7 +103,7 @@ export default function RegisterPage() {
     <div className="min-h-[calc(100vh-4rem)] bg-[#F1EFE8] px-4 py-10 text-[#2C2C2A]">
       <div className="mx-auto mt-10 w-full max-w-md rounded-xl border border-[#D3D1C7] bg-white p-8 shadow-md md:mt-20">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-[#E6F1FB] text-[#185FA5]">
-          <GraduationCap size={30} />
+          <MdSchool size={30} />
         </div>
         <div className="mt-5 text-center">
           <h1 className="font-heading text-2xl font-bold text-[#0C447C]">Create Account</h1>
@@ -180,7 +181,7 @@ export default function RegisterPage() {
               disabled={parentForm.formState.isSubmitting}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#EF9F27] px-4 font-semibold text-[#633806] transition hover:bg-[#d98c18] disabled:opacity-60"
             >
-              {parentForm.formState.isSubmitting && <Loader2 className="animate-spin" size={18} />}
+              {parentForm.formState.isSubmitting && <FiLoader className="animate-spin" size={18} />}
               Send OTP
             </button>
           </form>
@@ -236,7 +237,7 @@ export default function RegisterPage() {
               disabled={schoolForm.formState.isSubmitting}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#185FA5] px-4 font-semibold text-white transition hover:bg-[#0C447C] disabled:opacity-60"
             >
-              {schoolForm.formState.isSubmitting && <Loader2 className="animate-spin" size={18} />}
+              {schoolForm.formState.isSubmitting && <FiLoader className="animate-spin" size={18} />}
               Register School
             </button>
           </form>

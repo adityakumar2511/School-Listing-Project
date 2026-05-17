@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { FiLoader } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { setAuthToken } from "@/lib/auth-token";
 
@@ -171,7 +171,7 @@ export function ParentLoginForm() {
           className="flex w-full items-center justify-center gap-3 rounded-lg border border-[#D3D1C7] bg-white px-4 py-3 text-sm font-semibold text-[#2C2C2A] shadow-sm transition hover:border-[#185FA5] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
         >
           {googleLoading ? (
-            <Loader2 className="animate-spin" size={18} />
+            <FiLoader className="animate-spin" size={18} />
           ) : (
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
               <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.548 14.252 17.64 11.92 17.64 9.2z" fill="#4285F4"/>
@@ -217,7 +217,7 @@ export function ParentLoginForm() {
               {phoneError && <p className="mt-1 text-xs text-[#A32D2D]">{phoneError}</p>}
             </label>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" size={16} /> : null}
+              {loading ? <FiLoader className="animate-spin" size={16} /> : null}
               {loading ? "Sending…" : "Send OTP"}
             </Button>
           </form>
@@ -252,7 +252,7 @@ export function ParentLoginForm() {
               {otpError && <p className="mt-1 text-xs text-[#A32D2D]">{otpError}</p>}
             </label>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" size={16} /> : null}
+              {loading ? <FiLoader className="animate-spin" size={16} /> : null}
               {loading ? "Verifying…" : "Verify & Sign In"}
             </Button>
             <div className="text-center text-xs text-[#888780]">

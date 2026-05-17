@@ -24,13 +24,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
-  // ── /admin/setup — dev-only credentials reference, no auth ─────────────────
-  // The page itself returns 404 in production via `notFound()`. We let the
-  // request through here so the page can decide whether to render or 404.
-  if (pathname === "/admin/setup") {
-    return NextResponse.next();
-  }
-
   // ── /admin/* — requires role="admin" ────────────────────────────────────────
   if (pathname.startsWith("/admin")) {
     if (!token) {

@@ -16,12 +16,11 @@ import {
   HiOutlineCurrencyRupee,
   HiOutlineDocumentText,
 } from "react-icons/hi";
-import { getFeaturedSchools, getAdmissionOpenSchools } from "@/data/schools";
 import { SchoolCard } from "@/components/schools/school-card";
 import { HeroSearch } from "@/components/schools/hero-search";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { normalizeSchool } from "@/lib/schools-api";
+import { fetchSchoolsList } from "@/lib/schools-api";
 
 export const metadata: Metadata = {
   title: "Schools in Prayagraj 2025 — Fees, Admission & Comparison | SchoolSetu",
@@ -37,10 +36,13 @@ export const metadata: Metadata = {
   },
 };
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const featuredSchools = getFeaturedSchools().map(normalizeSchool);
-const admissionOpenSchools = getAdmissionOpenSchools().map(normalizeSchool);
+async function loadHomeSchoolRows() {
+  const [featured, admissionOpen] = await Promise.all([
+    fetchSchoolsList({ featured: true, limit: 12, page: 1 }),
+    fetchSchoolsList({ admissionOpen: true, limit: 12, page: 1 }),
+  ]);
+  return { featuredSchools: featured.data, admissionOpenSchools: admissionOpen.data };
+}
 
 const heroStats = [
   { value: "15+", label: "Schools Listed" },
@@ -156,9 +158,9 @@ const guides: {
   },
 ];
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+export default async function HomePage() {
+  const { featuredSchools, admissionOpenSchools } = await loadHomeSchoolRows();
 
-export default function HomePage() {
   return (
     <>
       {/* ── Section 1: Hero ── */}

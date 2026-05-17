@@ -25,8 +25,6 @@ enum InquiryStatus {
   interested
   converted
   closed
-  admitted
-  rejected
 }
 
 enum PendingUpdateStatus {
@@ -59,19 +57,17 @@ model User {
   @@map("users")
 }
 
-model OtpRecord {
+model OtpCode {
   id        String   @id @default(cuid())
   phone     String
-  otp       String
-  expiresAt DateTime @map("expires_at")
+  code      String
+  expiresAt DateTime
   used      Boolean  @default(false)
-  usedAt    DateTime? @map("used_at")
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now())
 
-  @@index([phone, otp, used])
+  @@index([phone, code, used])
   @@index([expiresAt])
-  @@map("otp_records")
+  @@map("otp_codes")
 }
 
 model State {
@@ -376,16 +372,7 @@ enum AuditAction {
   SCHOOL_DELETED
   SCHOOL_FEATURED_TOGGLED
   SCHOOL_CREATED
-  USER_DEACTIVATED
-  USER_REACTIVATED
-  USER_ROLE_CHANGED
-  TEAM_MEMBER_CREATED
-  TEAM_MEMBER_DEACTIVATED
-  TEAM_MEMBER_PERMISSIONS_UPDATED
-  INQUIRY_STATUS_CHANGED
-  INQUIRY_DELETED
   ADMIN_LOGIN
-  ADMIN_LOGOUT
 }
 
 model AuditLog {

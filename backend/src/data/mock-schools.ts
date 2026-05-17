@@ -82,9 +82,14 @@ export function buildSchoolWhere(filters: SchoolListFilters): Prisma.SchoolWhere
   }
 
   if (filters.city) {
-    where.city = {
-      slug: filters.city
-    };
+    const cuidLike = /^c[a-z0-9]{20,}$/i.test(filters.city);
+    if (cuidLike) {
+      where.cityId = filters.city;
+    } else {
+      where.city = {
+        slug: filters.city
+      };
+    }
   }
 
   if (filters.board) {
@@ -149,7 +154,7 @@ export function buildSchoolWhere(filters: SchoolListFilters): Prisma.SchoolWhere
   return where;
 }
 
-export type SchoolSort = "relevance" | "fee-asc" | "fee-desc";
+export type SchoolSort = "relevance" | "fee-asc" | "fee-desc" | "newest";
 
 function buildOrderBy(sort?: SchoolSort): Prisma.SchoolOrderByWithRelationInput[] {
   if (sort === "fee-asc") {
@@ -157,6 +162,9 @@ function buildOrderBy(sort?: SchoolSort): Prisma.SchoolOrderByWithRelationInput[
   }
   if (sort === "fee-desc") {
     return [{ fees: { tuitionFeeMonthly: "desc" } }];
+  }
+  if (sort === "newest") {
+    return [{ createdAt: "desc" }];
   }
   return [{ isFeatured: "desc" }, { createdAt: "desc" }];
 }

@@ -1,10 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { logger } from "../config/logger.js";
 import { prisma } from "../config/prisma.js";
 import { resendService } from "../services/resend.service.js";
-import { twilioService } from "../services/twilio.service.js";
+import { sendWhatsApp } from "../services/twilioService.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { HttpError } from "../utils/http-error.js";
+import { assertSchoolAccess } from "./schools.controller.js";
 
 const createInquirySchema = z.object({
   schoolId: z.string(),
@@ -181,35 +183,62 @@ export const createInquiry = asyncHandler(async (request, response) => {
     });
   });
 
+  response.status(201).json({ data: inquiry });
+
+  // ── Fire-and-forget notifications — each channel isolated ───────────────────
   const whatsappNumber = school.details?.whatsapp ?? school.details?.phone;
   if (whatsappNumber) {
-    await twilioService.sendWhatsAppMessage(
-      whatsappNumber,
-      `New SchoolSetu inquiry for ${school.name}: ${body.parentName}, class ${body.grade ?? "N/A"}, phone ${body.phone}.`
-    );
+    void (async () => {
+      try {
+        await sendWhatsApp(
+          whatsappNumber,
+          `New SchoolSetu inquiry for ${school.name}: ${body.parentName}, class ${body.grade ?? "N/A"}, phone ${body.phone}.`,
+        );
+      } catch (err) {
+        logger.error("[Inquiry] WhatsApp notification failed", {
+          schoolId: school.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
   }
 
   if (school.details?.email) {
-    await resendService.sendMail(
-      school.details.email,
-      `New admission inquiry — ${school.name}`,
-      `<p>You received a new inquiry from <strong>${body.parentName}</strong>.</p>
-       <p>Phone: ${body.phone}</p>
-       <p>Student: ${body.childName ?? "Not provided"}</p>
-       <p>Class: ${body.grade ?? "Not provided"}</p>
-       <p>Message: ${body.message ?? "—"}</p>`
-    );
+    void (async () => {
+      try {
+        await resendService.sendMail(
+          school.details!.email!,
+          `New admission inquiry — ${school.name}`,
+          `<p>You received a new inquiry from <strong>${body.parentName}</strong>.</p>
+           <p>Phone: ${body.phone}</p>
+           <p>Student: ${body.childName ?? "Not provided"}</p>
+           <p>Class: ${body.grade ?? "Not provided"}</p>
+           <p>Message: ${body.message ?? "—"}</p>`,
+        );
+      } catch (err) {
+        logger.error("[Inquiry] school email notification failed", {
+          schoolId: school.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
   }
 
   if (body.email) {
-    await resendService.sendMail(
-      body.email,
-      "Your SchoolSetu inquiry has been received",
-      `<p>Hi ${body.parentName},</p><p>Your inquiry for ${school.name} has been received. The school team will contact you shortly.</p>`
-    );
+    void (async () => {
+      try {
+        await resendService.sendMail(
+          body.email!,
+          "Your SchoolSetu inquiry has been received",
+          `<p>Hi ${body.parentName},</p><p>Your inquiry for ${school.name} has been received. The school team will contact you shortly.</p>`,
+        );
+      } catch (err) {
+        logger.error("[Inquiry] parent email notification failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
   }
-
-  response.status(201).json({ data: inquiry });
 });
 
 export const updateInquiryStatus = asyncHandler(async (request, response) => {
@@ -267,4 +296,76 @@ export const addInquiryNote = asyncHandler(async (request, response) => {
   });
 
   response.status(201).json({ data: note });
+});
+
+export const listPlatformInquiries = asyncHandler(async (_req, res) => {
+  const inquiries = await prisma.inquiry.findMany({
+    include: {
+      school: { select: { id: true, name: true, slug: true } },
+      parent: { select: { id: true, name: true, phone: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({ data: inquiries });
+});
+
+export const listInquiriesForSchoolBoard = asyncHandler(async (request, response) => {
+  if (!request.user) throw new HttpError(401, "Authentication required");
+
+  let schoolId: string;
+  if (request.user.role === "admin") {
+    const raw = request.query.schoolId;
+    const q = Array.isArray(raw) ? raw[0] : raw;
+    if (!q || typeof q !== "string") {
+      throw new HttpError(400, "schoolId query parameter is required for admin");
+    }
+    schoolId = q;
+  } else if (request.user.role === "school") {
+    const owned = await prisma.school.findFirst({
+      where: { ownerId: request.user.id },
+      select: { id: true },
+    });
+    if (!owned) throw new HttpError(404, "No school registered to your account");
+    schoolId = owned.id;
+  } else {
+    throw new HttpError(403, "Insufficient permissions");
+  }
+
+  await assertSchoolAccess(request.user, schoolId);
+
+  const inquiries = await prisma.inquiry.findMany({
+    where: { schoolId },
+    include: {
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+        },
+      },
+      notes: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  response.json({
+    data: inquiries,
+    schoolId,
+  });
 });

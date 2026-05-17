@@ -12,7 +12,6 @@ import {
   FiSearch,
   FiShield,
   FiTrash2,
-  FiUser,
   FiX,
 } from "react-icons/fi";
 import { authHeaders, getAuthToken } from "@/lib/auth-token";
@@ -26,16 +25,7 @@ type AuditAction =
   | "SCHOOL_DELETED"
   | "SCHOOL_FEATURED_TOGGLED"
   | "SCHOOL_CREATED"
-  | "USER_DEACTIVATED"
-  | "USER_REACTIVATED"
-  | "USER_ROLE_CHANGED"
-  | "TEAM_MEMBER_CREATED"
-  | "TEAM_MEMBER_DEACTIVATED"
-  | "TEAM_MEMBER_PERMISSIONS_UPDATED"
-  | "INQUIRY_STATUS_CHANGED"
-  | "INQUIRY_DELETED"
-  | "ADMIN_LOGIN"
-  | "ADMIN_LOGOUT";
+  | "ADMIN_LOGIN";
 
 interface AuditLog {
   id: string;
@@ -43,7 +33,7 @@ interface AuditLog {
   actorEmail: string | null;
   actorRole: string;
   actorTeamRole: string | null;
-  action: AuditAction;
+  action: string;
   targetType: string;
   targetId: string;
   targetName: string | null;
@@ -64,7 +54,7 @@ interface Pagination {
 
 interface StatsResponse {
   totalActions: number;
-  actionsByType: { action: AuditAction; _count: { action: number } }[];
+  actionsByType: { action: string; _count: { action: number } }[];
   actionsByActor: {
     actorEmail: string | null;
     actorTeamRole: string | null;
@@ -122,62 +112,8 @@ const ACTION_CONFIG: Record<
     bgColor: "bg-green-100",
     icon: <FiCheck size={12} />,
   },
-  USER_DEACTIVATED: {
-    label: "User Deactivated",
-    color: "text-red-700",
-    bgColor: "bg-red-100",
-    icon: <FiUser size={12} />,
-  },
-  USER_REACTIVATED: {
-    label: "User Reactivated",
-    color: "text-green-700",
-    bgColor: "bg-green-100",
-    icon: <FiUser size={12} />,
-  },
-  USER_ROLE_CHANGED: {
-    label: "Role Changed",
-    color: "text-blue-700",
-    bgColor: "bg-blue-100",
-    icon: <FiUser size={12} />,
-  },
-  TEAM_MEMBER_CREATED: {
-    label: "Team Member Added",
-    color: "text-blue-700",
-    bgColor: "bg-blue-100",
-    icon: <FiUser size={12} />,
-  },
-  TEAM_MEMBER_DEACTIVATED: {
-    label: "Team Member Deactivated",
-    color: "text-red-700",
-    bgColor: "bg-red-100",
-    icon: <FiUser size={12} />,
-  },
-  TEAM_MEMBER_PERMISSIONS_UPDATED: {
-    label: "Permissions Updated",
-    color: "text-amber-700",
-    bgColor: "bg-amber-100",
-    icon: <FiShield size={12} />,
-  },
-  INQUIRY_STATUS_CHANGED: {
-    label: "Inquiry Updated",
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
-    icon: <FiEdit size={12} />,
-  },
-  INQUIRY_DELETED: {
-    label: "Inquiry Deleted",
-    color: "text-red-700",
-    bgColor: "bg-red-100",
-    icon: <FiTrash2 size={12} />,
-  },
   ADMIN_LOGIN: {
     label: "Admin Login",
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
-    icon: <FiShield size={12} />,
-  },
-  ADMIN_LOGOUT: {
-    label: "Admin Logout",
     color: "text-gray-700",
     bgColor: "bg-gray-100",
     icon: <FiShield size={12} />,
@@ -192,12 +128,6 @@ const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: "SCHOOL_DELETED", label: "School Deleted" },
   { value: "SCHOOL_FEATURED_TOGGLED", label: "Featured Toggled" },
   { value: "ADMIN_LOGIN", label: "Admin Login" },
-  { value: "ADMIN_LOGOUT", label: "Admin Logout" },
-  { value: "TEAM_MEMBER_CREATED", label: "Team Member Added" },
-  { value: "TEAM_MEMBER_DEACTIVATED", label: "Team Member Deactivated" },
-  { value: "USER_DEACTIVATED", label: "User Deactivated" },
-  { value: "INQUIRY_STATUS_CHANGED", label: "Inquiry Updated" },
-  { value: "INQUIRY_DELETED", label: "Inquiry Deleted" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -558,7 +488,8 @@ export default function AuditLogsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {logs.map((log) => {
-                    const cfg = ACTION_CONFIG[log.action];
+                    const cfg =
+                      ACTION_CONFIG[log.action as AuditAction];
                     const isDanger = cfg?.danger === true;
                     const hasChanges =
                       (log.previousData && Object.keys(log.previousData).length > 0) ||

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { FiCheck, FiChevronLeft, FiChevronRight, FiLoader } from "react-icons/fi";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/schools-api";
@@ -299,7 +299,7 @@ export function SchoolRegisterForm() {
       <div className="mx-auto max-w-2xl">
         <div className="mt-8 rounded-2xl border border-[#C0DD97] bg-white p-10 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF3DE]">
-            <Check size={32} className="text-[#3B6D11]" />
+            <FiCheck size={32} className="text-[#3B6D11]" />
           </div>
           <h2 className="mt-5 font-heading text-2xl font-bold text-[#042C53]">
             Registration Submitted!
@@ -696,18 +696,18 @@ export function SchoolRegisterForm() {
             onClick={handleBack}
             disabled={step === 1 || submitting}
           >
-            <ChevronLeft size={16} />
+            <FiChevronLeft size={16} />
             Back
           </Button>
 
           {step < STEPS.length ? (
             <Button type="button" onClick={handleNext}>
               Next
-              <ChevronRight size={16} />
+              <FiChevronRight size={16} />
             </Button>
           ) : (
             <Button type="button" onClick={handleSubmit} disabled={submitting} variant="amber">
-              {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
+              {submitting ? <FiLoader className="animate-spin" size={16} /> : null}
               {submitting ? "Submitting…" : "Submit Registration"}
             </Button>
           )}

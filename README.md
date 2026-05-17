@@ -1,227 +1,62 @@
 # SchoolSetu
 
-SchoolSetu is a full-stack school discovery and admission platform for Tier-2 and Tier-3 Indian cities. It helps parents discover schools, compare options, request admission callbacks, and use AI-assisted recommendations. It gives schools a digital presence and gives platform admins a foundation for moderation, approvals, featured placements, SEO pages, lead quality control, and a complete audit trail of every admin action.
+SchoolSetu is a full-stack school discovery and admission platform focused on Tier-2 and Tier-3 Indian cities. Parents can search and compare schools, read blog content, use an AI recommendation helper, and submit OTP-verified admission inquiries. Schools can register, sign in, manage inquiries, and submit profile, gallery, and section updates for admin review. Admins moderate schools, pending profile changes, and audit activity.
 
-The current target cities are:
+**Docs:** `frontend/Frontend.md` (UI, routes, data layer) · `backend/Backend.md` (API, Prisma, services)
 
-| City | Purpose in the product |
+## Target cities (seed / product focus)
+
+| City | Notes |
 | --- | --- |
-| Prayagraj | Primary seeded city and strongest current school coverage. |
-| Banda | Target expansion city for affordable discovery. |
-| Kanpur | Target expansion city for board and category pages. |
-| Jhansi | Target expansion city with boarding and hostel search needs. |
-| Lucknow | Target expansion city for private and premium schools. |
+| Prayagraj | Primary seeded city and listing coverage. |
+| Banda, Kanpur, Jhansi, Lucknow | Seeded for expansion; listing depth varies. |
 
-## Project Overview
+## Audiences
 
-SchoolSetu serves three audiences:
-
-| Audience | What they do in SchoolSetu |
+| Audience | In the product today |
 | --- | --- |
-| Parents | Search schools by city, board, query, facilities, category, fees, and admission status. Compare schools, view detail pages, request admission inquiries via WhatsApp or a form, and ask the AI assistant for recommendations. |
-| Schools | Register or claim listings, manage profile information, receive inquiries, upload media, and buy featured placements. Registration and update flows are scaffolded. |
-| Platform admins | Moderate new schools, review pending updates, approve or reject schools, curate SEO pages, manage listing quality, and review a full audit log of every team and master admin action. |
+| Parents | Public discovery, compare, blog, AI recommend page, OTP auth, inquiry submission. |
+| Schools | Registration, OTP/school login, dashboard: inquiries, profile/gallery/sections submit → `PendingUpdate`. |
+| Admins | Admin UI areas (schools, moderation, audit logs, etc.) backed by JWT + Prisma APIs. |
 
-## Problem Statement
+## Tech stack (summary)
 
-School discovery in Tier-2 and Tier-3 cities is still fragmented. Many parents depend on WhatsApp groups, offline word of mouth, outdated school websites, or paid admission agents. Schools often have incomplete digital footprints, weak SEO, no structured inquiry capture, and no reliable way to present facilities, fees, board affiliation, or admission status.
+| Area | Stack |
+| --- | --- |
+| Frontend | Next.js App Router, React 19, TypeScript, Tailwind 4, TanStack Query, Zustand, React Hook Form + Zod, Radix UI (tabs, slot), Framer Motion |
+| Backend | Node.js, Express 5, TypeScript, Prisma, PostgreSQL, JWT auth, Zod, Helmet, rate limiting, Winston logger |
+| Integrations (optional in dev) | Twilio (SMS/WhatsApp), Cloudinary (images), OpenAI (AI recommend), Resend (email), Razorpay (payments — limited/disabled in current health check) |
 
-SchoolSetu solves this by creating:
-
-- A searchable directory for local schools with client-side filters (board, fees, gender, facilities, special focus).
-- SEO pages for cities, boards, and categories with JSON-LD structured data.
-- Structured school profiles with fees, academics, facilities, gallery, and contact actions.
-- WhatsApp-first inquiry capture with an OTP-verified inline form.
-- AI-assisted recommendations based on parent preferences.
-- Admin moderation so listings can be trusted before going live.
-- A full audit log recording every admin action with before/after state.
-
-## Tech Stack
-
-| Layer | Technology | Why it is used |
-| --- | --- | --- |
-| Frontend | Next.js App Router | SSR, SSG, dynamic metadata, SEO pages, and nested route architecture. |
-| Frontend | React 19 | Component model for interactive discovery, compare, and chat flows. |
-| Frontend | TypeScript | End-to-end type safety for data shapes, UI props, and API normalization. |
-| Frontend | Tailwind CSS 4 | Token-driven styling with fast iteration and responsive layouts. |
-| Frontend | React Icons | Consistent icon set (Feather, Material, Heroicons) replacing all emojis in UI. |
-| Frontend | Zustand | Lightweight client state for the compare shortlist. |
-| Frontend | TanStack Query | Server state for school listings and async fetch lifecycle. |
-| Frontend | Framer Motion | Small chat/message animations and polished UI transitions. |
-| Frontend | Zod | Runtime validation schemas for forms. |
-| Frontend | React Hook Form | Efficient form state for inquiry and auth forms. |
-| Backend | Node.js | JavaScript runtime shared with the frontend ecosystem. |
-| Backend | Express 5 | Modular HTTP API with simple route/controller boundaries. |
-| Backend | TypeScript | Stronger contracts across controllers, services, middleware, and Prisma. |
-| Backend | Prisma ORM | Typed database access and PostgreSQL schema modeling. |
-| Backend | PostgreSQL | Relational fit for users, schools, cities, boards, inquiries, payments, moderation, audit logs, and SEO content. |
-| Backend | JWT | Stateless API authentication for parent, school, and admin roles. |
-| Backend | Helmet | Secure HTTP response headers. |
-| Backend | express-rate-limit | Global API throttling and tighter OTP throttling. |
-| Backend | Zod | Request validation for OTP, schools, inquiries, payments, and AI inputs. |
-
-## Repository Structure
+## Monorepo layout
 
 ```text
 .
-|-- README.md
-|-- package.json
-|-- package-lock.json
-|-- backend/
-|   |-- Backend.md
-|   |-- package.json
-|   |-- tsconfig.json
-|   |-- eslint.config.mjs
-|   |-- src/
-|   |   |-- app.ts
-|   |   |-- server.ts
-|   |   |-- config/
-|   |   |   |-- env.ts
-|   |   |   |-- prisma.ts
-|   |   |-- controllers/
-|   |   |   |-- admin.controller.ts
-|   |   |   |-- ai.controller.ts
-|   |   |   |-- auth.controller.ts
-|   |   |   |-- inquiries.controller.ts
-|   |   |   |-- media.controller.ts
-|   |   |   |-- payments.controller.ts
-|   |   |   |-- schools.controller.ts
-|   |   |   |-- taxonomy.controller.ts
-|   |   |-- data/
-|   |   |   |-- mock-schools.ts
-|   |   |-- middleware/
-|   |   |   |-- audit.middleware.ts       ← NEW
-|   |   |   |-- auth.ts
-|   |   |   |-- error-handler.ts
-|   |   |   |-- security.ts
-|   |   |-- prisma/
-|   |   |   |-- schema.prisma
-|   |   |   |-- seed.ts
-|   |   |-- routes/
-|   |   |   |-- admin.routes.ts
-|   |   |   |-- ai.routes.ts
-|   |   |   |-- auth.routes.ts
-|   |   |   |-- index.ts
-|   |   |   |-- inquiries.routes.ts
-|   |   |   |-- media.routes.ts
-|   |   |   |-- payments.routes.ts
-|   |   |   |-- schools.routes.ts
-|   |   |   |-- search.routes.ts
-|   |   |   |-- taxonomy.routes.ts
-|   |   |-- services/
-|   |   |   |-- ai.service.ts
-|   |   |   |-- audit.service.ts          ← NEW
-|   |   |   |-- cloudinary.service.ts
-|   |   |   |-- razorpay.service.ts
-|   |   |   |-- resend.service.ts
-|   |   |   |-- twilio.service.ts
-|   |   |-- utils/
-|   |       |-- async-handler.ts
-|   |       |-- http-error.ts
-|-- frontend/
-    |-- Frontend.md
-    |-- package.json
-    |-- tsconfig.json
-    |-- next.config.ts
-    |-- postcss.config.mjs
-    |-- eslint.config.mjs
-    |-- public/
-    |   |-- school-logo.svg
-    |-- data/
-    |   |-- schools.ts
-    |-- lib/
-    |   |-- auth-token.ts                 ← NEW
-    |   |-- schools-api.ts                ← NEW
-    |   |-- utils.ts
-    |-- store/
-    |   |-- compare-store.ts
-    |-- components/
-    |   |-- ai/
-    |   |   |-- ai-chat.tsx
-    |   |-- inquiry/
-    |   |   |-- inquiry-form.tsx
-    |   |-- schools/
-    |   |   |-- hero-search.tsx            ← NEW
-    |   |   |-- mobile-sticky-bar.tsx      ← NEW
-    |   |   |-- school-card.tsx
-    |   |   |-- school-inquiry-cta.tsx
-    |   |   |-- search-panel.tsx
-    |   |-- ui/
-    |   |   |-- badge.tsx
-    |   |   |-- button.tsx
-    |   |   |-- card.tsx
-    |   |-- providers.tsx
-    |   |-- site-footer.tsx
-    |   |-- site-header.tsx
-    |-- app/
-        |-- globals.css
-        |-- layout.tsx
-        |-- admin/
-        |   |-- page.tsx
-        |   |-- audit-logs/               ← NEW
-        |   |   |-- page.tsx
-        |   |-- [section]/
-        |       |-- page.tsx
-        |-- dashboard/page.tsx
-        |-- school/dashboard/page.tsx
-        |-- (public)/
-            |-- page.tsx
-            |-- about/page.tsx
-            |-- ai-recommend/page.tsx
-            |-- auth/
-            |   |-- login/page.tsx         ← NEW (role selector)
-            |   |-- parent/
-            |   |   |-- login/
-            |   |       |-- page.tsx       ← NEW
-            |   |       |-- parent-login-form.tsx  ← NEW
-            |   |-- school/
-            |   |   |-- login/
-            |   |       |-- page.tsx       ← NEW
-            |   |       |-- school-login-form.tsx  ← NEW
-            |   |-- register/page.tsx
-            |   |-- verify-otp/page.tsx
-            |-- blog/
-            |   |-- page.tsx
-            |   |-- [slug]/page.tsx        ← NEW (3 static articles)
-            |-- compare/page.tsx
-            |-- contact/page.tsx
-            |-- for-schools/page.tsx
-            |-- privacy-policy/page.tsx
-            |-- terms-of-service/page.tsx
-            |-- schools/
-                |-- page.tsx
-                |-- schools-listing-client.tsx
-                |-- [slug]/page.tsx
-                |-- board/[board]/page.tsx
-                |-- category/[category]/page.tsx
-                |-- state/[state]/page.tsx
+├── README.md
+├── package.json              # workspace root; npm run dev runs frontend + backend
+├── backend/
+│   ├── Backend.md
+│   ├── src/
+│   │   ├── app.ts, server.ts
+│   │   ├── config/           # env, prisma, logger
+│   │   ├── controllers/      # auth, schools, inquiries, admin, ai, media, payments, taxonomy, blog
+│   │   ├── data/mock-schools.ts   # Prisma listing helpers (name kept for history)
+│   │   ├── middleware/     # auth, security, error-handler; audit.middleware.ts exists but is not mounted globally
+│   │   ├── prisma/
+│   │   ├── routes/
+│   │   └── services/       # ai, audit, cloudinary, razorpay, resend, twilio, etc.
+│   └── package.json
+└── frontend/
+    ├── Frontend.md
+    ├── app/                  # App Router: (public), admin, school/dashboard, auth, sitemap.ts
+    ├── components/
+    ├── lib/                  # schools-api, blog-api, auth-token, utils
+    ├── data/schools.ts       # fallbacks / static helpers where used
+    └── package.json
 ```
 
-### What each area does
+## Quick start
 
-| Path | Responsibility |
-| --- | --- |
-| `backend/src/services/audit.service.ts` | `createAuditLog` writes to `AuditLog` inside try/catch so it never blocks the main operation. `extractActor` extracts actor metadata from Express requests. |
-| `backend/src/middleware/audit.middleware.ts` | Response-intercepting middleware that wraps `res.json` and fires `createAuditLog` only on 2xx responses. |
-| `backend/src/controllers/admin.controller.ts` | Full Prisma-backed admin operations: school list, approve/verify, reject, edit, delete, featured toggle, moderation queue, plus `listAuditLogs` and `auditLogStats` handlers. |
-| `backend/src/routes/admin.routes.ts` | All admin routes including `GET /audit-logs`, `GET /audit-logs/stats`, `PUT /schools/:id/edit`, `DELETE /schools/:id`, `PUT /schools/:id/toggle-featured`. |
-| `backend/src/prisma/schema.prisma` | Adds `AuditAction` enum (16 values) and `AuditLog` model with indexes on `actorId`, `action`, `targetType+targetId`, and `createdAt`. |
-| `frontend/lib/auth-token.ts` | `getAuthToken`, `setAuthToken`, `clearAuthToken`, and `authHeaders()` using localStorage key `schoolsetu_token`. |
-| `frontend/lib/schools-api.ts` | `NormalizedSchool` type and `normalizeSchool` function that flatten Prisma and mock school shapes into a single UI-compatible object. API fetchers: `fetchSchoolsList`, `fetchSchoolBySlug`. |
-| `frontend/app/admin/audit-logs/page.tsx` | Full audit log viewer: stats bar, action/date/search filters, color-coded table with row highlight for danger actions, side-drawer diff viewer, CSV export. |
-| `frontend/app/(public)/page.tsx` | Parent-only homepage. 8 sections: Hero, Trust Bar, Featured Schools, Browse by Category, How It Works, AI CTA, Admissions Open, Helpful Guides. All React Icons, no emojis. |
-| `frontend/app/(public)/auth/login/page.tsx` | Role selector: two cards for Parent Login and School Admin Login. |
-| `frontend/app/(public)/auth/parent/login/` | Dedicated parent login with Google Sign-In and Phone OTP tabs. |
-| `frontend/app/(public)/auth/school/login/` | Dedicated school admin login with Email/Password and Phone OTP tabs. |
-| `frontend/app/(public)/blog/[slug]/page.tsx` | Three fully-written English articles: Prayagraj admission guide, CBSE vs UP Board comparison, top hostel schools review. |
-| `frontend/app/(public)/for-schools/page.tsx` | School-facing landing page: hero, benefits, how it works, what's included checklist, final CTA. |
-| `frontend/components/schools/hero-search.tsx` | Client-side search bar on the homepage with city badge and keyboard support. |
-| `frontend/components/schools/mobile-sticky-bar.tsx` | Mobile-only sticky bottom bar with Call, WhatsApp, and Inquiry buttons on school detail pages. |
-| `frontend/components/site-header.tsx` | Client component with a hamburger menu for mobile. Slide-down drawer with nav links, closes on route change or outside click. |
-
-## Quick Start
-
-### 1. Clone and install
+### 1. Install
 
 ```bash
 git clone <repo-url>
@@ -229,315 +64,122 @@ cd "6. School Listing Project"
 npm install
 ```
 
-### 2. Configure environment
+### 2. Environment
 
-Create `backend/.env`:
+**`backend/.env`** (typical):
 
 ```bash
 NODE_ENV=development
 PORT=4000
 FRONTEND_URL=http://localhost:3000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/schoolsetu
-JWT_SECRET=replace-with-a-long-local-secret
+DATABASE_URL=postgresql://user:pass@localhost:5432/schoolsetu
+JWT_SECRET=use-a-long-random-secret
 ```
 
-Create `frontend/.env.local`:
+**`frontend/.env`:**
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
-Provider keys are optional for local development. When omitted, services return skipped responses or deterministic mock responses.
+Optional: `OPENAI_API_KEY`, Twilio, Cloudinary, Resend, Razorpay keys — features degrade or skip when missing.
 
-### 3. Run Prisma migration
+### 3. Database
 
 ```bash
 cd backend
-npx prisma migrate dev --name add_audit_log
+npx prisma migrate dev
+npx prisma generate
+npm run seed
 ```
 
-### 4. Generate Prisma client
+### 4. Dev servers
 
-```bash
-npm run prisma:generate --workspace backend
-```
-
-### 5. Run development servers
+From repo root:
 
 ```bash
 npm run dev
 ```
 
-This runs:
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:4000`
 
-- Frontend at `http://localhost:3000`
-- Backend at `http://localhost:4000`
-
-### 6. Build and typecheck
+### 5. Quality gates
 
 ```bash
 npm run typecheck
 npm run build
 ```
 
-## Environment Variables
+## Environment variables (high level)
 
-### Frontend
-
-| Variable | Required | Used by | Description |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | Recommended | `lib/schools-api.ts`, listings, detail page, AI chat, audit logs | Base URL for the backend, e.g. `http://localhost:4000`. Falls back to local mock data for school listings when absent. |
-| `NEXTAUTH_URL` | Pending | Auth.js integration | Needed when Google OAuth is fully wired through NextAuth/Auth.js. |
-| `NEXTAUTH_SECRET` | Pending | Auth.js integration | Secret for Auth.js session signing. |
-| `GOOGLE_CLIENT_ID` | Pending | Auth.js integration | Google OAuth client id. |
-| `GOOGLE_CLIENT_SECRET` | Pending | Auth.js integration | Google OAuth secret. |
-
-### Backend
-
-| Variable | Required | Used by | Description |
-| --- | --- | --- | --- |
-| `NODE_ENV` | No | `config/env.ts` | Runtime mode. Defaults to `development`. |
-| `PORT` | No | `server.ts` | API port. Defaults to `4000`. |
-| `FRONTEND_URL` | No | CORS middleware | Allowed frontend origin. Defaults to `http://localhost:3000`. |
-| `DATABASE_URL` | Required for Prisma | Prisma | PostgreSQL connection string. |
-| `JWT_SECRET` | Required in production | Auth middleware, OTP verify | Signs 7-day JWTs. Defaults to `development-secret`. |
-| `OPENAI_API_KEY` | Optional | AI service | Enables OpenAI recommendations. Missing key returns mock response. |
-| `TWILIO_ACCOUNT_SID` | Optional | Twilio service | Twilio account identifier for SMS and WhatsApp. |
-| `TWILIO_AUTH_TOKEN` | Optional | Twilio service | Twilio auth token. |
-| `TWILIO_PHONE_NUMBER` | Optional | Twilio SMS OTP | SMS sender number. |
-| `TWILIO_WHATSAPP_NUMBER` | Optional | Twilio WhatsApp | WhatsApp sender number. |
-| `CLOUDINARY_CLOUD_NAME` | Optional | Cloudinary service | Cloudinary account name. |
-| `CLOUDINARY_API_KEY` | Optional | Cloudinary service | Cloudinary API key. |
-| `CLOUDINARY_API_SECRET` | Optional | Cloudinary service | Cloudinary secret. |
-| `RESEND_API_KEY` | Optional | Resend service | Enables inquiry confirmation emails. |
-| `RAZORPAY_KEY_ID` | Optional | Razorpay service | Enables order creation. |
-| `RAZORPAY_KEY_SECRET` | Optional | Razorpay service/controller | Order API and payment signature verification. |
-| `RAZORPAY_WEBHOOK_SECRET` | Pending | Webhook hardening | Webhook signature verification not yet implemented. |
-
-## Workspace Scripts
-
-| Script | Command | What it does |
+| Scope | Variable | Purpose |
 | --- | --- | --- |
-| `npm run dev` | `npm-run-all --parallel dev:frontend dev:backend` | Runs both apps concurrently. |
-| `npm run dev:frontend` | `npm run dev --workspace frontend` | Starts Next.js dev server with Turbopack. |
-| `npm run dev:backend` | `npm run dev --workspace backend` | Starts Express with `tsx watch`. |
-| `npm run build` | Frontend build then backend build | Produces `.next` and `backend/dist`. |
-| `npm run typecheck` | Frontend typecheck then backend typecheck | Runs `tsc --noEmit` in both workspaces. |
+| Frontend | `NEXT_PUBLIC_API_URL` | Backend origin for `fetch` (schools, blog, etc.). |
+| Backend | `DATABASE_URL` | PostgreSQL for Prisma. |
+| Backend | `JWT_SECRET` | Signs bearer JWTs (default in dev is weak — change in production). |
+| Backend | `FRONTEND_URL` | CORS origin. |
+| Backend | Provider keys | Twilio, Cloudinary, OpenAI, Resend, Razorpay — optional locally; see `backend/src/config/env.ts`. |
 
-## Feature Coverage
+## Scripts (root `package.json`)
 
-### Implemented
-
-- **Homepage** — 8-section parent-focused landing page: Hero with search, Trust Bar, Featured Schools, Browse by Category, How It Works, AI CTA, Admissions Open, Helpful Guides. React Icons throughout, no emojis.
-- **School listing** — `/schools/[city]` with client-side filters: board, gender, fee range, facilities, special focus, and free-text search. Sort by relevance, fee low/high, newest.
-- **School detail page** — Breadcrumbs, school header, quick stats strip, action buttons (Call/WhatsApp/Inquiry), About section, Fee Structure table, Facilities grid, Special Programs, Nearby Schools, sticky sidebar inquiry CTA, mobile sticky bar.
-- **City pages** — `/schools/prayagraj` (and other city slugs) with JSON-LD `ItemList`, breadcrumbs, stats strip, and listing client.
-- **Static blog** — Blog listing page and 3 fully-written English articles (admission guide, CBSE vs UP Board, hostel schools review).
-- **Auth system** — Role selector at `/auth/login`, dedicated parent login (Google + Phone OTP), dedicated school admin login (Email/Password + Phone OTP). All copy in English.
-- **For Schools page** — 5-section school-facing landing page with benefits, how it works, and free listing CTA.
-- **Audit Log system**:
-  - `AuditAction` enum (16 actions) + `AuditLog` model in Prisma schema.
-  - `createAuditLog` service that never blocks main operations.
-  - `extractActor` helper for Express requests.
-  - `auditLog` response-intercepting middleware.
-  - Full Prisma-backed admin controller: approve, reject, edit, delete, toggle featured, moderation queue.
-  - `ADMIN_LOGIN` logged on successful OTP verification for admin users.
-  - `GET /api/admin/audit-logs` — filterable, paginated audit log API.
-  - `GET /api/admin/audit-logs/stats` — 30-day action counts, groupBy actor, danger actions.
-  - Frontend audit log page: stats cards, filters, color-coded table, red-row highlights for deletes, side-drawer diff viewer (before/after JSON), CSV export.
-- **Mobile header** — Hamburger menu in site header with slide-down drawer, auto-close on route change/outside click.
-- **Inquiry form** — Zod + React Hook Form, authenticated API submission, success/duplicate/error states. All labels in English.
-- **OTP backend** — Persistent `OtpRecord`, 5-minute expiry, rate limit, JWT issuance.
-- **Taxonomy API** — Cities, states, boards with approved-school counts.
-- **Inquiry API** — Create, status update, notes with duplicate prevention.
-- **All UI copy** — Fully converted from Hinglish to professional English across all pages and components.
-
-### Partially Implemented
-
-- School registration and update endpoints return moderation-shaped responses but do not yet persist full payloads into all Prisma tables.
-- Media upload accepts `filePath` instead of multipart uploads.
-- Razorpay webhook returns `{ received: true }` without signature verification.
-- AI fallback references `mockSchools`, currently empty in the backend.
-- Prisma migration for `AuditLog` must be run manually when the Neon DB is reachable (`npx prisma migrate dev --name add_audit_log`).
-
-### Pending
-
-- Complete Auth.js Google OAuth integration.
-- School claim flow and school profile editing UI.
-- Admin moderation UI connected to `PendingUpdate` and `ApprovalLog`.
-- File upload middleware with `multer` + Cloudinary browser upload.
-- Payment persistence, webhook verification, and featured listing activation.
-- ISR configuration for SEO pages.
-- Request logging, observability, and tests.
-- Spam detection and lead quality scoring.
-- School ownership model for `school` role.
-
-## Architecture Decisions
-
-### Why Next.js App Router
-
-SchoolSetu depends on SEO. Parents search for phrases such as "CBSE schools in Prayagraj" or "boarding schools in Jhansi". The App Router gives server components, static generation, dynamic metadata, route groups, and easy city/board/category SEO pages. Interactive pieces — compare, chat, filters, forms — stay as client components.
-
-### Why PostgreSQL over MongoDB
-
-The domain is relational: schools belong to cities, states, and boards; inquiries connect parents and schools; featured listings connect payments and schools; audit logs record actors, targets, and before/after state. PostgreSQL enforces this structure cleanly and Prisma provides typed access.
-
-### Why a modular monolith
-
-The product is early-stage but domain-heavy. A modular monolith keeps deployment simple while preserving boundaries through controllers, routes, services, middleware, and Prisma models. It avoids premature microservices while making later extraction possible.
-
-### Why TypeScript end-to-end
-
-School data is reused across listing cards, detail pages, AI recommendations, inquiry flows, and backend responses. TypeScript reduces shape drift, catches route/controller mistakes, and keeps frontend normalization safer. The `NormalizedSchool` type in `frontend/lib/schools-api.ts` is the single contract between backend Prisma responses and all UI components.
-
-### Why audit logs never block main operations
-
-All `createAuditLog` calls are wrapped in their own try/catch. If the audit write fails (network, DB error, schema mismatch), the admin operation still completes and returns success. Audit failures are logged to `console.error` for visibility without breaking the user flow.
-
-## API Overview
-
-| Method | Route | Auth required | Description |
-| --- | --- | --- | --- |
-| `GET` | `/api/health` | No | Health check. |
-| `POST` | `/api/auth/send-otp` | No | Sends OTP for phone login. Rate limited. |
-| `POST` | `/api/auth/verify-otp` | No | Verifies OTP, upserts user, returns JWT. Logs `ADMIN_LOGIN` for admin users. |
-| `POST` | `/api/auth/google` | No | Placeholder; Google OAuth handled by frontend Auth.js. |
-| `GET` | `/api/schools` | No | Lists approved schools with filters and pagination. |
-| `GET` | `/api/schools/:slug` | No | Returns one approved school by slug. |
-| `POST` | `/api/schools` | `school` or `admin` | Submits school registration for moderation. |
-| `PUT` | `/api/schools/:id` | `school` or `admin` | Submits school update to moderation queue. |
-| `GET` | `/api/search` | No | Alias for `GET /api/schools`. |
-| `POST` | `/api/inquiries` | `parent` | Creates an admission inquiry. Prevents duplicates within 7 days. |
-| `PUT` | `/api/inquiries/:id/status` | `school` or `admin` | Updates inquiry status. |
-| `POST` | `/api/inquiries/:id/notes` | `school` or `admin` | Adds a note to an inquiry. |
-| `POST` | `/api/ai/recommend` | No | Sends preferences to AI recommendation service. |
-| `GET` | `/api/admin/schools` | `admin` | Lists all schools for admin review (Prisma-backed). |
-| `PUT` | `/api/admin/schools/:id/approve` | `admin` | Approves school. Updates status, logs `SCHOOL_VERIFIED`. |
-| `PUT` | `/api/admin/schools/:id/reject` | `admin` | Rejects school. Updates status, logs `SCHOOL_REJECTED`. |
-| `PUT` | `/api/admin/schools/:id/edit` | `admin` | Updates school fields. Logs `SCHOOL_EDITED` with changed fields diff. |
-| `DELETE` | `/api/admin/schools/:id` | `admin` | Deletes school. Saves pre-delete data, logs `SCHOOL_DELETED`. |
-| `PUT` | `/api/admin/schools/:id/toggle-featured` | `admin` | Toggles featured status. Logs `SCHOOL_FEATURED_TOGGLED`. |
-| `GET` | `/api/admin/moderation` | `admin` | Lists pending moderation items. |
-| `PUT` | `/api/admin/moderation/:id/approve` | `admin` | Approves pending update. |
-| `PUT` | `/api/admin/moderation/:id/reject` | `admin` | Rejects pending update. |
-| `GET` | `/api/admin/audit-logs` | `admin` | Paginated audit log with filters: actorId, action, targetType, targetId, from, to, search. |
-| `GET` | `/api/admin/audit-logs/stats` | `admin` | 30-day stats: total actions, groupBy action type, groupBy actor, recent danger actions. |
-| `POST` | `/api/upload/image` | `school` or `admin` | Uploads image via Cloudinary. |
-| `DELETE` | `/api/upload/image/:id` | `school` or `admin` | Deletes Cloudinary asset. |
-| `POST` | `/api/payments/create-order` | `school` or `admin` | Creates Razorpay order. |
-| `POST` | `/api/payments/verify-payment` | `school` or `admin` | Verifies Razorpay signature. |
-| `POST` | `/api/payments/webhook` | No | Razorpay webhook placeholder. |
-| `GET` | `/api/cities` | No | Lists cities with approved school counts. |
-| `GET` | `/api/states` | No | Lists states with cities that have approved schools. |
-| `GET` | `/api/boards` | No | Lists boards with approved school counts. |
-
-## Database Overview
-
-| Model | Purpose |
+| Script | Role |
 | --- | --- |
-| `User` | Parents, schools, and admins. Stores email, phone, role, optional Google id. |
-| `OtpRecord` | OTP codes, expiry, used flag, and indexes for phone and expiry lookup. |
-| `State` | State taxonomy. |
-| `City` | City taxonomy with slug and `hasSchools`. |
-| `Board` | Education boards (CBSE, ICSE, UP Board, etc.). |
-| `School` | Core listing record with city, board, status, type, medium, featured flag. |
-| `SchoolDetails` | Principal, year, affiliation, website, email, phone, WhatsApp. |
-| `SchoolAddress` | Address, pincode, coordinates, Google Maps URL. |
-| `SchoolAcademics` | Streams, class range, admission window, required documents. |
-| `SchoolFees` | Admission, tuition, transport, hostel, exam fees. |
-| `SchoolFacilities` | Boolean facility flags (library, labs, hostel, transport, wifi, CCTV, etc.). |
-| `SchoolGallery` | Cloudinary image/video URLs, captions, and ordering. |
-| `SchoolSection` | Flexible content sections (sports, hostel, IIT/NEET). |
-| `SchoolAchievement` | Awards and accomplishments. |
-| `Facility` | Facility taxonomy for search/filter UI. |
-| `Inquiry` | Admission lead linking parent and school. |
-| `InquiryNote` | School/admin notes on an inquiry. |
-| `PendingUpdate` | Proposed school profile changes waiting for review. |
-| `ApprovalLog` | Admin approval/rejection history for pending updates. |
-| `FeaturedListing` | Paid placement windows tied to a school and optional payment. |
-| `Payment` | Razorpay order/payment references and featured listing plan metadata. |
-| `BlogPost` | SEO/blog content. |
-| `SeoPage` | Custom metadata/content for city, board, category, or other landing pages. |
-| `AuditLog` | **NEW** — Complete record of every admin action with actor, target, before/after JSON, IP, user agent, and timestamp. |
+| `npm run dev` | Frontend + backend in parallel. |
+| `npm run typecheck` | Typecheck both workspaces. |
+| `npm run build` | Production builds. |
 
-### AuditAction enum values
+## Implemented features (current)
 
-`SCHOOL_VERIFIED`, `SCHOOL_REJECTED`, `SCHOOL_EDITED`, `SCHOOL_DELETED`, `SCHOOL_FEATURED_TOGGLED`, `SCHOOL_CREATED`, `USER_DEACTIVATED`, `USER_REACTIVATED`, `USER_ROLE_CHANGED`, `TEAM_MEMBER_CREATED`, `TEAM_MEMBER_DEACTIVATED`, `TEAM_MEMBER_PERMISSIONS_UPDATED`, `INQUIRY_STATUS_CHANGED`, `INQUIRY_DELETED`, `ADMIN_LOGIN`, `ADMIN_LOGOUT`.
+- **Public site:** Home (featured + admission-open lists from API), school listing with filters, school detail (tabbed layout, map when coords exist, nearby via API), city/board/category/state routes, compare, AI recommend page, static marketing pages, **blog from API** (`GET /api/admin/blog` public), **`app/sitemap.ts`** aggregating schools, cities, boards, blog posts, and static URLs.
+- **Auth:** Phone OTP via backend; JWT in `localStorage` + cookie; role selector and parent/school login flows; `next-auth` present but not the primary OTP path.
+- **Inquiries:** Parent-authenticated `POST /api/inquiries`; duplicate window; school/admin status and notes; school dashboard table.
+- **School accounts:** `POST /api/schools` registers school + related rows in a transaction; `GET /api/schools/me` for owner; `PUT /api/schools/:id` creates **`PendingUpdate`** (profile, fees, address, gallery list, sections list as submitted); school dashboard **Profile / Gallery / Sections** tabs.
+- **Media:** `POST /api/upload/image` with JSON **`{ imageBase64 }`** (data URL or base64); `DELETE /api/upload/image/:id` removes a **`SchoolGallery`** row and Cloudinary asset when configured.
+- **Admin API:** Schools approve/reject/edit/delete, featured toggle, moderation queue + approve/reject pending updates (applies merged profile/gallery/sections when approved), audit log list + stats, **blog CRUD** (`POST`/`PUT`/`DELETE` under `/api/admin/blog` with admin auth).
+- **Audit logging:** `createAuditLog` used from auth (admin login) and admin school actions; **`AuditAction`** enum is limited to school + admin login actions (see `backend/Backend.md`). `audit.middleware.ts` is **not** wired into `app.ts` today.
 
-## Authentication Flow
+## Known gaps / partial areas
 
-### OTP flow
+- **Payments:** Health endpoint reports payments disabled; webhook/signature flows are not production-complete.
+- **Google OAuth:** Placeholder / not the primary login path; OTP is.
+- **Admin UI** pages vary in how fully they call every backend capability — treat `frontend/app/admin/*` as screens that should match the API over time.
 
-1. Frontend collects a phone number.
-2. Frontend calls `POST /api/auth/send-otp`.
-3. Backend generates a 6-digit OTP, marks previous unused OTPs used, creates a new `OtpRecord` with 5-minute expiry.
-4. `twilioService.sendSmsOtp` sends the SMS, or returns skipped if unconfigured.
-5. User submits `{ phone, otp }` to `POST /api/auth/verify-otp`.
-6. Backend finds an unused unexpired OTP, marks it used in a transaction, upserts parent `User`.
-7. Backend signs `{ id, role, phone }` JWT with 7-day expiry.
-8. If the user is an admin, `ADMIN_LOGIN` is written to `AuditLog`.
-9. Frontend stores the token via `lib/auth-token.ts` and sends it as `Authorization: Bearer <token>`.
+## API overview
 
-### JWT payload shape
+Base URL: `/api` on the backend server. Common routes:
 
-```ts
-{ id: string; role: "parent" | "school" | "admin"; phone?: string }
-```
-
-## Service Integrations
-
-| Service | File | Project role | Dev fallback |
+| Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| Twilio | `backend/src/services/twilio.service.ts` | Sends SMS OTP and WhatsApp messages. | Returns `{ skipped: true, reason, phone, otp }` when credentials are missing. |
-| Cloudinary | `backend/src/services/cloudinary.service.ts` | Uploads/deletes school gallery and profile media. | Returns skipped response. |
-| OpenAI | `backend/src/services/ai.service.ts` | Generates school recommendations from parent preferences. | Returns provider `mock` with empty recommendations. |
-| Resend | `backend/src/services/resend.service.ts` | Sends inquiry confirmation emails. | Returns skipped response. |
-| Razorpay | `backend/src/services/razorpay.service.ts` | Creates payment orders for featured listings. | Returns skipped response. |
+| GET | `/health` | No | Status + feature flags. |
+| POST | `/auth/send-otp`, `/auth/verify-otp` | No | OTP login; admin OTP logs `ADMIN_LOGIN` when applicable. |
+| GET | `/schools` | No | Approved schools; filters incl. `limit` up to **1000**. |
+| GET | `/schools/me` | Yes (`school`) | Owner’s school + relations. |
+| GET | `/schools/:slug` | No | Approved school detail. |
+| POST | `/schools` | Yes | New school registration. |
+| PUT | `/schools/:id` | Yes (`school`/`admin`) | Submit **`PendingUpdate`** (even for admin JWT — no shortcut on this path). |
+| PUT | `/admin/schools/:id/edit` | Yes (`admin`) | Direct top-level **`School`** row patch (outside the moderation queue). |
+| POST | `/inquiries` | Yes (`parent`) | Create inquiry. |
+| GET | `/inquiries/for-school` | Yes (`school`/`admin`) | School’s inquiries. |
+| PUT | `/inquiries/:id/status` | Yes (`school`/`admin`) | Update status. |
+| POST | `/inquiries/:id/notes` | Yes (`school`/`admin`) | Add note. |
+| POST | `/ai/recommend` | No | AI helper (mock if no OpenAI key). |
+| GET | `/admin/blog` | No | Published posts (mounted in `routes/index.ts`). |
+| GET | `/admin/blog/:slug` | No | Single published post. |
+| POST/PUT/DELETE | `/admin/blog`, `/admin/blog/:id` | Yes (`admin`) | Blog management. |
+| GET | `/admin/schools`, moderation, audit-logs, … | Yes (`admin`) | Operations (see Backend.md). |
+| POST | `/upload/image` | Yes (`school`/`admin`) | Base64/image upload to Cloudinary. |
+| DELETE | `/upload/image/:id` | Yes (`school`/`admin`) | Gallery row + Cloudinary cleanup. |
+| GET | `/cities`, `/states`, `/boards` | No | Taxonomy. |
 
-## SEO Strategy
+Full detail: **`backend/Backend.md`**.
 
-- `app/(public)/schools/[slug]/page.tsx` implements `generateMetadata()` for both city pages and school detail pages.
-- School detail pages render JSON-LD `School` schema.
-- City pages render JSON-LD `ItemList` schema.
-- `generateStaticParams()` prebuilds all mock school slugs and target city slugs.
-- Board pages at `/schools/board/[board]`, category pages at `/schools/category/[category]`, state pages at `/schools/state/[state]`.
-- Blog articles at `/blog/[slug]` with per-post `generateMetadata()` and `generateStaticParams()`.
-- All metadata descriptions are in professional English (Hinglish fully removed).
+## Database (conceptual)
 
-## Deployment Notes
+Prisma models include `User`, `OtpCode`, geography (`State`, `City`, `Board`), `School` and nested `SchoolDetails`, `SchoolAddress`, `SchoolAcademics`, `SchoolFees`, `SchoolFacilities`, `SchoolGallery`, `SchoolSection`, `SchoolAchievement`, `Inquiry`, `InquiryNote`, `PendingUpdate`, `ApprovalLog`, `FeaturedListing`, `Payment`, `BlogPost`, `SeoPage`, `Facility`, **`AuditLog`**. Enum values must match **`schema.prisma`** — see Backend.md for the current **`AuditAction`** set.
 
-| Component | Recommended host | Notes |
-| --- | --- | --- |
-| Frontend | Vercel | Best fit for Next.js App Router. Set `NEXT_PUBLIC_API_URL` to the backend URL. |
-| Backend | Railway or Render | Run `npm run build --workspace backend` and `npm run start --workspace backend`. |
-| Database | Neon PostgreSQL | Serverless PostgreSQL with Prisma. Run migrations before first deploy. |
-| Media | Cloudinary | Store school images and galleries. |
-| Email/SMS/Payments | Resend, Twilio, Razorpay | Use production keys in backend environment only. |
+## Contributing
 
-Before production:
-
-- Replace all development secrets.
-- Run `npx prisma migrate dev --name add_audit_log` against the hosted database.
-- Seed boards, states, cities, and initial schools.
-- Set correct `FRONTEND_URL` for CORS.
-- Add request logging and monitoring.
-- Verify Razorpay webhooks with `RAZORPAY_WEBHOOK_SECRET`.
-- Complete Auth.js Google OAuth integration.
-
-## Contributing and Development Guidelines
-
-- Keep the project TypeScript-first. Do not introduce untyped API shapes when Zod or Prisma types can describe them.
-- Use canonical design tokens: primary blue `#185FA5`, amber CTA `#EF9F27`, background `#F1EFE8`, text `#2C2C2A`, border `#D3D1C7`.
-- Do not mix admin features into parent-facing pages unless the route is explicitly an admin route.
-- Keep frontend server data and client interactivity separated: server routes for SEO, client components for chat, compare, forms, and filters.
-- Backend controllers should validate input with Zod and delegate provider logic to services.
-- Protected APIs must use `requireAuth` and `requireRole`.
-- Audit logs must never block main operations — always in a separate try/catch.
-- All UI copy must be in professional English. No Hinglish.
-- Use React Icons (`react-icons/fi`, `react-icons/md`, `react-icons/hi`) for all icons. No emojis in UI text.
-- Run these before handing off:
-
-```bash
-npm run typecheck
-npm run build
-```
+- TypeScript-first; validate HTTP input with Zod on the backend.
+- Use design tokens documented in **`frontend/Frontend.md`**.
+- Run `npm run typecheck` (and `npm run build` when appropriate) before handing off.

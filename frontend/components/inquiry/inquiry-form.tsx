@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, LogIn, Loader2, Send, AlertTriangle } from "lucide-react";
+import { FiLoader, FiLogIn, FiSend } from "react-icons/fi";
+import { MdCheckCircle, MdWarning } from "react-icons/md";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -147,7 +148,7 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
     return (
       <div className="grid gap-4 rounded-xl border border-[#D3D1C7] bg-white p-6">
         <div className="flex items-start gap-3 rounded-lg bg-[#E6F1FB] p-4">
-          <LogIn className="mt-0.5 shrink-0 text-[#185FA5]" size={20} />
+          <FiLogIn className="mt-0.5 shrink-0 text-[#185FA5]" size={20} />
           <div>
             <p className="font-semibold text-[#0C447C]">Sign in to send an inquiry</p>
             <p className="mt-1 text-sm text-[#55534e]">
@@ -172,10 +173,10 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
   if (mutation.isSuccess) {
     return (
       <div className="grid place-items-center gap-3 rounded-xl border border-[#D3D1C7] bg-[#EAF3DE] p-8 text-center">
-        <CheckCircle2 className="text-[#3B6D11]" size={40} />
+        <MdCheckCircle className="text-[#3B6D11]" size={40} />
         <div>
-          <p className="font-heading text-lg font-bold text-[#3B6D11]">
-            ✓ Inquiry Submitted!
+          <p className="flex items-center justify-center gap-1.5 font-heading text-lg font-bold text-[#3B6D11]">
+            <MdCheckCircle className="shrink-0" size={22} aria-hidden /> Inquiry submitted
           </p>
           <p className="mt-1 text-sm text-[#2C2C2A]">
             The school will contact you on{" "}
@@ -202,7 +203,7 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
     return (
       <div className="grid gap-4 rounded-xl border border-[#D3D1C7] bg-white p-6">
         <div className="flex items-start gap-3 rounded-lg bg-[#FAEEDA] p-4">
-          <AlertTriangle className="mt-0.5 shrink-0 text-[#EF9F27]" size={20} />
+          <MdWarning className="mt-0.5 shrink-0 text-[#EF9F27]" size={20} />
           <div>
             <p className="font-semibold text-[#633806]">Inquiry already submitted</p>
             <p className="mt-1 text-sm text-[#633806]">
@@ -327,7 +328,7 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
       {/* Generic error banner */}
       {mutation.isError && !isDuplicate && (
         <div className="flex items-start gap-2 rounded-lg bg-[#FCEBEB] px-3 py-2.5">
-          <AlertTriangle className="mt-0.5 shrink-0 text-[#A32D2D]" size={16} />
+          <MdWarning className="mt-0.5 shrink-0 text-[#A32D2D]" size={16} />
           <p className="text-sm text-[#A32D2D]">{mutationError?.message}</p>
         </div>
       )}
@@ -339,9 +340,9 @@ export function InquiryForm({ schoolId, schoolName, admissionClasses, onSuccess 
         className="mt-1 w-full"
       >
         {mutation.isPending ? (
-          <Loader2 className="animate-spin" size={17} />
+          <FiLoader className="animate-spin" size={17} />
         ) : (
-          <Send size={17} />
+          <FiSend size={17} />
         )}
         {mutation.isPending ? "Submitting..." : "Submit Inquiry"}
       </Button>

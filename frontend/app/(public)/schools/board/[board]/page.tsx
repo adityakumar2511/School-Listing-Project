@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { SchoolCard } from "@/components/schools/school-card";
 import { fetchSchoolsList } from "@/lib/schools-api";
 
+export const revalidate = 3600;
+
 type BoardPageProps = {
   params: Promise<{ board: string }>;
 };

@@ -1,6 +1,7 @@
 "use client";
 
-import { Search, SlidersHorizontal } from "lucide-react";
+import { FiSearch } from "react-icons/fi";
+import { MdTune } from "react-icons/md";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ export function SearchPanel({ showFacility = true }: SearchPanelProps) {
       }`}
     >
       <label className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888780]" size={18} />
+        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888780]" size={18} />
         <input
           value={q}
           onChange={(event) => setQ(event.target.value)}
@@ -72,7 +73,7 @@ export function SearchPanel({ showFacility = true }: SearchPanelProps) {
         </select>
       ) : null}
       <Button type="submit" variant="amber" size="lg">
-        <SlidersHorizontal size={17} />
+        <MdTune size={17} />
         Find
       </Button>
     </form>

@@ -1,10 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
 import { prisma } from "../config/prisma.js";
 import { findSchoolBySlug, findSchools } from "../data/mock-schools.js";
 import { resendService } from "../services/resend.service.js";
-import { twilioService } from "../services/twilio.service.js";
+import { sendWhatsApp } from "../services/twilioService.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { HttpError } from "../utils/http-error.js";
 
@@ -22,9 +23,9 @@ const listQuerySchema = z.object({
     .union([z.literal("true"), z.literal("false")])
     .optional()
     .transform((value) => value === "true"),
-  sort: z.enum(["relevance", "fee-asc", "fee-desc"]).optional(),
+  sort: z.enum(["relevance", "fee-asc", "fee-desc", "newest"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(12)
+  limit: z.coerce.number().int().min(1).max(1000).default(12)
 });
 
 const createSchoolSchema = z.object({
@@ -114,7 +115,7 @@ async function resolveCity(cityValue: string) {
   });
 }
 
-async function assertSchoolAccess(user: Express.Request["user"], schoolId: string) {
+export async function assertSchoolAccess(user: Express.Request["user"], schoolId: string) {
   if (!user) {
     throw new HttpError(401, "Authentication required");
   }
@@ -134,6 +135,10 @@ async function assertSchoolAccess(user: Express.Request["user"], schoolId: strin
 
   if (!school) {
     throw new HttpError(404, "School not found");
+  }
+
+  if (school.ownerId === user.id) {
+    return;
   }
 
   const userRecord = await prisma.user.findUnique({ where: { id: user.id } });
@@ -162,6 +167,8 @@ export const getMySchool = asyncHandler(async (request, response) => {
       fees: true,
       facilities: true,
       academics: true,
+      gallery: { orderBy: { order: "asc" } },
+      sections: { orderBy: { order: "asc" } },
     },
   });
 
@@ -200,7 +207,8 @@ export const listSchools = asyncHandler(async (request, response) => {
 
 export const getSchool = asyncHandler(async (request, response) => {
   const school = await findSchoolBySlug(String(request.params.slug));
-  if (!school) {
+  // Public endpoint: only approved schools are visible. Pending/rejected → 404.
+  if (!school || school.status !== "approved") {
     throw new HttpError(404, "School not found");
   }
 
@@ -326,6 +334,14 @@ export const createSchool = asyncHandler(async (request, response) => {
     return created;
   });
 
+  try {
+    await prisma.user.update({ where: { id: ownerId }, data: { role: "school" } });
+  } catch (err) {
+    logger.error("[Schools] failed to bump owner role to school after registration", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   // ── Notifications (best-effort, never fail the request) ────────────────────
   void notifyAdminOfNewSchool(school.name, city.name, normalizedPhone).catch((err) =>
     console.error("[Schools] admin notification failed:", err)
@@ -340,21 +356,29 @@ export const createSchool = asyncHandler(async (request, response) => {
 async function notifyAdminOfNewSchool(schoolName: string, cityName: string, phone: string) {
   const message = `New school registered on SchoolSetu: ${schoolName} (${cityName}). Contact: ${phone}. Pending review.`;
 
-  // Email (Resend)
-  const notifyEmail = env.SCHOOL_REGISTRATION_EMAIL ?? "admin@schoolsetu.example";
-  await resendService
-    .sendMail(
+  // Email (Resend) — independent try/catch so a failure never blocks WhatsApp.
+  try {
+    const notifyEmail = env.SCHOOL_REGISTRATION_EMAIL ?? "admin@schoolsetu.example";
+    await resendService.sendMail(
       notifyEmail,
       `New school registration: ${schoolName}`,
-      `<p><strong>${schoolName}</strong> submitted a listing from ${cityName}.</p><p>Contact phone: ${phone}</p><p>Status: <strong>pending</strong> — review at <a href="${env.FRONTEND_URL}/admin/schools">/admin/schools</a></p>`
-    )
-    .catch((err) => console.error("[Schools] resend.sendMail failed:", err));
+      `<p><strong>${schoolName}</strong> submitted a listing from ${cityName}.</p><p>Contact phone: ${phone}</p><p>Status: <strong>pending</strong> — review at <a href="${env.FRONTEND_URL}/admin/schools">/admin/schools</a></p>`,
+    );
+  } catch (err) {
+    logger.error("[Schools] admin email notification failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
-  // WhatsApp (Twilio) — only if ADMIN_NOTIFICATION_PHONE is configured
+  // WhatsApp (Twilio) — only if ADMIN_NOTIFICATION_PHONE is configured.
   if (env.ADMIN_NOTIFICATION_PHONE) {
-    await twilioService
-      .sendWhatsAppMessage(env.ADMIN_NOTIFICATION_PHONE, message)
-      .catch((err) => console.error("[Schools] twilio whatsapp failed:", err));
+    try {
+      await sendWhatsApp(env.ADMIN_NOTIFICATION_PHONE, message);
+    } catch (err) {
+      logger.error("[Schools] admin WhatsApp notification failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }
 
@@ -366,23 +390,56 @@ export const updateSchool = asyncHandler(async (request, response) => {
   const schoolId = String(request.params.id);
   await assertSchoolAccess(request.user, schoolId);
 
-  const school = await prisma.school.findUnique({ where: { id: schoolId } });
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    include: {
+      details: true,
+      address: true,
+      fees: true,
+      gallery: { orderBy: { order: "asc" } },
+      sections: { orderBy: { order: "asc" } },
+    },
+  });
   if (!school) {
     throw new HttpError(404, "School not found");
   }
 
   const newValue = updateSchoolSchema.parse(request.body);
 
+  const oldValue = {
+    name: school.name,
+    description: school.description,
+    type: school.type,
+    medium: school.medium,
+    principalName: school.details?.principalName ?? null,
+    phone: school.details?.phone ?? null,
+    addressLine: school.address?.addressLine ?? null,
+    pincode: school.address?.pincode ?? null,
+    admissionFee: school.fees?.admissionFee ?? null,
+    tuitionFeeMonthly: school.fees?.tuitionFeeMonthly ?? null,
+    tuitionFeeAnnual: school.fees?.tuitionFeeAnnual ?? null,
+    transportFee: school.fees?.transportFee ?? null,
+    hostelFee: school.fees?.hostelFee ?? null,
+    gallery: school.gallery.map((g) => ({
+      id: g.id,
+      cloudinaryUrl: g.cloudinaryUrl,
+      order: g.order,
+      type: g.type,
+    })),
+    sections: school.sections.map((s) => ({
+      id: s.id,
+      title: s.title,
+      content: s.content,
+      sectionType: s.sectionType,
+      order: s.order,
+    })),
+  };
+
   const pendingUpdate = await prisma.pendingUpdate.create({
     data: {
       schoolId,
       fieldType: "profile",
-      oldValue: {
-        name: school.name,
-        description: school.description,
-        type: school.type,
-        medium: school.medium
-      },
+      oldValue: oldValue as Prisma.InputJsonValue,
       newValue: newValue as Prisma.InputJsonValue,
       submittedBy: request.user.id,
       status: "pending"
@@ -392,46 +449,5 @@ export const updateSchool = asyncHandler(async (request, response) => {
   response.json({
     message: "Update submitted to moderation queue",
     pendingUpdate
-  });
-});
-
-export const getSchoolInquiries = asyncHandler(async (request, response) => {
-  const schoolId = String(request.params.id);
-  await assertSchoolAccess(request.user, schoolId);
-
-  const inquiries = await prisma.inquiry.findMany({
-    where: { schoolId },
-    include: {
-      parent: {
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-          email: true
-        }
-      },
-      notes: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              role: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        }
-      }
-    },
-    orderBy: {
-      createdAt: "desc"
-    }
-  });
-
-  response.json({
-    data: inquiries,
-    schoolId
   });
 });

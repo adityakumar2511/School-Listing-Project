@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { fetchCities } from "@/lib/schools-api";
 
+export const revalidate = 3600;
+
 type StatePageProps = {
   params: Promise<{ state: string }>;
 };

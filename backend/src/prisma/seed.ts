@@ -496,20 +496,78 @@ async function main() {
     await upsertSchool(seed, state.id);
   }
 
-  console.log("\n────────────────────────────────────────────────────────────");
-  console.log("  ✓ Seed completed");
-  console.log("    5 cities, 5 boards, 13 facilities, 7 approved schools");
-  console.log("────────────────────────────────────────────────────────────");
-  console.log("  ADMIN LOGIN");
-  console.log(`    Phone : ${ADMIN_PHONE}`);
-  console.log(`    Name  : ${ADMIN_NAME}`);
-  console.log("    URL   : http://localhost:3000/auth/parent/login");
-  console.log("    Flow  : Enter phone → receive OTP → verify → /admin");
-  if (ADMIN_PHONE.includes("X")) {
-    console.log("\n  ⚠  WARNING: Replace ADMIN_PHONE in seed.ts with a real");
-    console.log("     number before you can log in. Re-run `npm run seed`.");
+  const blogSeeds = [
+    {
+      slug: "prayagraj-school-admission-guide-2025",
+      title: "School Admission in Prayagraj 2025 — Complete Guide",
+      content:
+        "<p>Documents, timeline, and fees — everything first-time applicants need to know. Start by preparing Aadhaar, birth certificate, and previous class results before you visit shortlisted schools.</p><h2>Required documents</h2><p>Most schools ask for residence proof, passport-size photos, and TC if applicable. Always carry originals and photocopies.</p>",
+      author: "SchoolSetu Editorial",
+      seo_title: "Prayagraj School Admission 2025 — Documents & Timeline",
+      seo_description:
+        "Complete guide to school admission in Prayagraj: documents, timelines, and fee ranges for CBSE and UP Board.",
+      publishedAt: new Date("2025-01-15T10:00:00.000Z"),
+    },
+    {
+      slug: "cbse-vs-up-board-prayagraj",
+      title: "CBSE vs UP Board — An Honest Comparison for Prayagraj Parents",
+      content:
+        "<p>Choosing between CBSE and UP Board depends on medium, fees, and your child&#39;s goals. CBSE aligns well with national competitive exams while UP Board suits tight budgets with strong Hindi foundations.</p><h2>Quick takeaways</h2><p>Compare monthly fees, language of instruction, and transfer flexibility before deciding.</p>",
+      author: "SchoolSetu Editorial",
+      seo_title: "CBSE vs UP Board in Prayagraj",
+      seo_description:
+        "A practical comparison of CBSE and UP Board schools in Prayagraj for parents balancing cost and curriculum.",
+      publishedAt: new Date("2025-01-20T12:00:00.000Z"),
+    },
+    {
+      slug: "top-hostel-schools-prayagraj",
+      title: "Top Hostel Schools in Prayagraj — Fees and Facilities 2025",
+      content:
+        "<p>Boarding schools can offer discipline and focused academics when day schools are impractical. Visit hostels in person and speak with current parents about food, safety, and weekend policies.</p><h2>What to inspect</h2><p>Check medical support, CCTV coverage, visitation rules, and how often children can speak with guardians.</p>",
+      author: "SchoolSetu Editorial",
+      seo_title: "Best Hostel Schools in Prayagraj",
+      seo_description:
+        "Fees, hostel facilities, and safety checklist for parents evaluating boarding schools around Prayagraj.",
+      publishedAt: new Date("2025-02-01T09:30:00.000Z"),
+    },
+  ];
+
+  for (const b of blogSeeds) {
+    await prisma.blogPost.upsert({
+      where: { slug: b.slug },
+      update: {
+        title: b.title,
+        content: b.content,
+        author: b.author,
+        seoTitle: b.seo_title,
+        seoDescription: b.seo_description,
+        publishedAt: b.publishedAt,
+      },
+      create: {
+        slug: b.slug,
+        title: b.title,
+        content: b.content,
+        author: b.author,
+        seoTitle: b.seo_title,
+        seoDescription: b.seo_description,
+        publishedAt: b.publishedAt,
+      },
+    });
   }
-  console.log("────────────────────────────────────────────────────────────\n");
+
+  console.log("\n------------------------------------------------------------");
+  console.log("  Seed completed");
+  console.log("    5 cities, 5 boards, 13 facilities, 7 approved schools");
+  console.log("------------------------------------------------------------");
+  console.log(`Admin seeded. Login phone: ${ADMIN_PHONE}`);
+  console.log(`  Name : ${ADMIN_NAME}`);
+  console.log("  URL  : http://localhost:3000/auth/parent/login");
+  console.log("  Flow : Enter phone -> receive OTP -> verify -> /admin");
+  if (ADMIN_PHONE.includes("X")) {
+    console.log("\n  WARNING: Replace ADMIN_PHONE in seed.ts with a real");
+    console.log("  number before you can log in. Re-run `npm run seed`.");
+  }
+  console.log("------------------------------------------------------------\n");
 }
 
 main()

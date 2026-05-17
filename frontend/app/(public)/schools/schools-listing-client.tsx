@@ -12,6 +12,7 @@ import {
   type SchoolFacilities,
 } from "@/data/schools";
 import { normalizeSchool } from "@/lib/schools-api";
+import { MdSearch } from "react-icons/md";
 import { SchoolCard } from "@/components/schools/school-card";
 import { Button } from "@/components/ui/button";
 
@@ -296,7 +297,7 @@ export function SchoolsListingClient({ defaultCitySlug = "prayagraj" }: Props) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-[#D3D1C7] bg-white py-16 text-center">
-            <span className="text-5xl">🔍</span>
+            <MdSearch className="text-6xl text-[#185FA5]/40" aria-hidden />
             <h3 className="mt-4 font-heading text-xl font-bold text-[#0C447C]">
               No Schools Found
             </h3>

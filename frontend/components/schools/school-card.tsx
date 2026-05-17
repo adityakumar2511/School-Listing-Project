@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, MessageCircle, Star, IndianRupee, Check } from "lucide-react";
+import { FiCheck, FiMapPin, FiMessageCircle, FiStar } from "react-icons/fi";
+import { MdCurrencyRupee } from "react-icons/md";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,7 +36,7 @@ export function SchoolCard({ school }: { school: NormalizedSchool }) {
             {school.name}
           </Link>
           <p className="mt-2 flex items-center gap-1 text-sm text-[#55534e]">
-            <MapPin size={15} />
+            <FiMapPin size={15} />
             {school.city}
           </p>
         </div>
@@ -47,7 +48,7 @@ export function SchoolCard({ school }: { school: NormalizedSchool }) {
             <>
               {school.facilities.slice(0, 4).map((facility) => (
                 <span key={facility} className="inline-flex items-center gap-1 text-xs text-[#55534e]">
-                  <Check size={13} className="text-[#3B6D11]" />
+                  <FiCheck size={13} className="text-[#3B6D11]" />
                   {facility}
                 </span>
               ))}
@@ -61,7 +62,7 @@ export function SchoolCard({ school }: { school: NormalizedSchool }) {
         </div>
         <div className="flex items-center justify-between border-t border-[#D3D1C7] pt-4">
           <span className="flex items-center gap-1 text-sm font-semibold text-[#2C2C2A]">
-            <IndianRupee size={15} />
+            <MdCurrencyRupee size={15} />
             {formatCurrency(school.monthlyFee)}/mo
           </span>
           <button
@@ -69,14 +70,14 @@ export function SchoolCard({ school }: { school: NormalizedSchool }) {
             onClick={() => toggleSchool(school.id)}
             className="inline-flex items-center gap-1 rounded-full border border-[#D3D1C7] px-3 py-1 text-xs font-medium hover:border-[#85B7EB]"
           >
-            <Star size={14} fill={isSelected ? "#EF9F27" : "none"} />
+            <FiStar size={14} {...(isSelected ? { fill: "#EF9F27", color: "#EF9F27" } : { fill: "none" })} />
             Compare
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button asChild variant="outline">
             <Link href={`https://wa.me/${school.whatsapp}`} target="_blank">
-              <MessageCircle size={17} />
+              <FiMessageCircle size={17} />
               WhatsApp
             </Link>
           </Button>

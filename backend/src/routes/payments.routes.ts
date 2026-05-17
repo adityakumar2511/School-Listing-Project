@@ -7,7 +7,7 @@ export const paymentsRouter = Router();
 
 // TODO: re-enable when Razorpay is configured
 function paymentsDisabled(_req: Request, res: Response, _next: NextFunction) {
-  res.status(503).json({ message: "Payments are currently disabled.", disabled: true });
+  res.status(503).json({ message: 'Payments coming soon', disabled: true });
 }
 
 paymentsRouter.post("/create-order", paymentsDisabled, requireAuth, requireRole("school", "admin"), createOrder);

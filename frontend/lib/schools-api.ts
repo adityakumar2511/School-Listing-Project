@@ -6,6 +6,7 @@ export type NormalizedSchool = {
   slug: string
   city: string
   citySlug: string
+  cityId?: string
   state: string
   board: string
   type: string
@@ -83,7 +84,7 @@ function normalizeFacilities(rawFacilities: unknown): string[] {
   return [];
 }
 
-type RawCity = { name?: string; slug?: string; state?: { name?: string } };
+type RawCity = { id?: string; name?: string; slug?: string; state?: { name?: string } };
 type RawBoard = { name?: string; slug?: string };
 type RawSection = { sectionType?: string };
 type RawGallery = { cloudinaryUrl?: string };
@@ -159,6 +160,8 @@ export function normalizeSchool(raw: unknown): NormalizedSchool {
     slug: String(school.slug),
     city: cityName,
     citySlug: typeof city === "object" ? city?.slug ?? slugify(cityName) : school.citySlug ?? slugify(cityName),
+    cityId:
+      typeof city === "object" && city && "id" in city && city.id != null ? String(city.id) : undefined,
     state: stateName ?? address.state ?? "Uttar Pradesh",
     board: boardName,
     type: school.type ?? "Co-ed",
@@ -202,7 +205,7 @@ export type SchoolQueryParams = {
   category?: string;
   featured?: boolean;
   admissionOpen?: boolean;
-  sort?: "relevance" | "fee-asc" | "fee-desc";
+  sort?: "relevance" | "fee-asc" | "fee-desc" | "newest";
   page?: number;
   limit?: number;
 };
@@ -231,7 +234,7 @@ export async function fetchSchoolsList(params: SchoolQueryParams): Promise<Schoo
     search.set("limit", String(limit));
 
     const response = await fetch(`${API_URL}/api/schools?${search.toString()}`, {
-      next: { revalidate: 60 }
+      next: { revalidate: 3600 }
     });
     if (!response.ok) {
       throw new Error(`Schools API returned ${response.status}`);
@@ -254,9 +257,23 @@ export async function fetchSchoolsList(params: SchoolQueryParams): Promise<Schoo
   }
 }
 
+export async function fetchSchoolDetailBySlug(slug: string): Promise<unknown | null> {
+  try {
+    const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 3600 } });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`School API returned ${response.status}`);
+    }
+    const payload = (await response.json()) as { data?: unknown };
+    return payload.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchSchoolBySlug(slug: string): Promise<NormalizedSchool | null> {
   try {
-    const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 60 } });
+    const response = await fetch(`${API_URL}/api/schools/${slug}`, { next: { revalidate: 3600 } });
     if (response.status === 404) return null;
     if (!response.ok) {
       throw new Error(`School API returned ${response.status}`);
@@ -277,7 +294,7 @@ export type CityRecord = {
 
 export async function fetchCities(): Promise<CityRecord[]> {
   try {
-    const response = await fetch(`${API_URL}/api/cities`, { next: { revalidate: 300 } });
+    const response = await fetch(`${API_URL}/api/cities`, { next: { revalidate: 3600 } });
     if (!response.ok) return [];
     const payload = (await response.json()) as { data?: CityRecord[] };
     return payload.data ?? [];

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { FiLoader } from "react-icons/fi";
 import { Badge } from "@/components/ui/badge";
 import { API_URL } from "@/lib/schools-api";
 import { authHeaders, getAuthToken } from "@/lib/auth-token";
@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
       <div className="mt-8">
         {isLoading && (
           <div className="flex items-center gap-2 text-sm text-[#888780]">
-            <Loader2 className="animate-spin" size={16} />
+            <FiLoader className="animate-spin" size={16} />
             Loading users…
           </div>
         )}

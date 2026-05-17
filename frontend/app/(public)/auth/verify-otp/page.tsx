@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, RotateCcw } from "lucide-react";
+import { FiArrowLeft, FiLoader, FiRotateCcw } from "react-icons/fi";
+import { MdSchool } from "react-icons/md";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -163,12 +164,12 @@ function VerifyOtpContent() {
       `}</style>
       <div className="mx-auto mt-10 w-full max-w-md rounded-xl border border-[#D3D1C7] bg-white p-8 shadow-md md:mt-20">
         <Link href="/auth/login" className="inline-flex items-center gap-2 text-sm font-semibold text-[#185FA5] hover:text-[#0C447C]">
-          <ArrowLeft size={16} />
+          <FiArrowLeft size={16} />
           Back
         </Link>
 
         <div className="mx-auto mt-5 grid h-14 w-14 place-items-center rounded-xl bg-[#E6F1FB] text-[#185FA5]">
-          <GraduationCap size={30} />
+          <MdSchool size={30} />
         </div>
 
         <div className="mt-5 text-center">
@@ -207,7 +208,7 @@ function VerifyOtpContent() {
               disabled={isSendingOtp}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#EF9F27] px-4 font-semibold text-[#633806] transition hover:bg-[#d98c18] disabled:opacity-60"
             >
-              {isSendingOtp && <Loader2 className="animate-spin" size={18} />}
+              {isSendingOtp && <FiLoader className="animate-spin" size={18} />}
               Send OTP
             </button>
           </form>
@@ -237,7 +238,7 @@ function VerifyOtpContent() {
             <div className="mt-5 flex items-center justify-center">
               {isVerifying ? (
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-[#185FA5]">
-                  <Loader2 className="animate-spin" size={16} />
+                  <FiLoader className="animate-spin" size={16} />
                   Verifying OTP...
                 </span>
               ) : (
@@ -247,7 +248,7 @@ function VerifyOtpContent() {
                   disabled={secondsLeft > 0 || isSendingOtp}
                   className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#185FA5] hover:bg-[#E6F1FB] disabled:cursor-not-allowed disabled:text-[#888780]"
                 >
-                  {isSendingOtp ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}
+                  {isSendingOtp ? <FiLoader className="animate-spin" size={16} /> : <FiRotateCcw size={16} />}
                   {secondsLeft > 0 ? `Resend OTP in ${secondsLeft}s` : "Resend OTP"}
                 </button>
               )}

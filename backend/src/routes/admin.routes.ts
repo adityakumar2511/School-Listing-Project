@@ -1,5 +1,10 @@
 import { Router } from "express";
 import {
+  createBlogPostAdmin,
+  deleteBlogPostAdmin,
+  updateBlogPostAdmin,
+} from "../controllers/blog.controller.js";
+import {
   adminCreateSchool,
   approveModerationItem,
   approveSchool,
@@ -40,3 +45,8 @@ adminRouter.put("/moderation/:id/reject", rejectModerationItem);
 // Audit logs — admin-only
 adminRouter.get("/audit-logs/stats", auditLogStats);
 adminRouter.get("/audit-logs", listAuditLogs);
+
+// Blog — public GET /api/admin/blog is registered in routes/index.ts (no auth)
+adminRouter.post("/blog", createBlogPostAdmin);
+adminRouter.put("/blog/:id", updateBlogPostAdmin);
+adminRouter.delete("/blog/:id", deleteBlogPostAdmin);

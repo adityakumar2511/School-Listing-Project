@@ -3,25 +3,33 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Shield, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { FiUser } from "react-icons/fi";
+import { MdShield } from "react-icons/md";
 import { Card } from "@/components/ui/card";
-import { getAuthToken } from "@/lib/auth-token";
+import { API_URL } from "@/lib/schools-api";
+import { authHeaders, getAuthToken } from "@/lib/auth-token";
 
 const adminRoutes = [
-  "schools",
-  "users",
-  "moderation",
-  "inquiries",
-  "featured",
-  "blog",
-  "seo",
-  "analytics",
-  "cities",
-  "payments",
-  "audit-logs",
+  { slug: "schools", label: "Schools" },
+  { slug: "schools/add", label: "Add School" },
+  { slug: "schools/pending", label: "Pending Schools" },
+  { slug: "users", label: "Users" },
+  { slug: "moderation", label: "Moderation" },
+  { slug: "inquiries", label: "Inquiries" },
+  { slug: "featured", label: "Featured" },
+  { slug: "blog", label: "Blog" },
+  { slug: "seo", label: "SEO" },
+  { slug: "analytics", label: "Analytics" },
+  { slug: "cities", label: "Cities" },
+  { slug: "payments", label: "Payments" },
+  { slug: "audit-logs", label: "Audit Logs" },
 ];
 
 type AdminInfo = { id: string; phone?: string; name?: string };
+
+type AdminSchool = { id: string; status: "pending" | "approved" | "rejected" };
+type AdminInquiry = { id: string; createdAt: string };
 
 function decodeAdminFromToken(token: string): AdminInfo | null {
   try {
@@ -58,6 +66,40 @@ export default function AdminPage() {
     setAdmin(payload);
   }, [router]);
 
+  const { data: schools } = useQuery({
+    queryKey: ["admin-overview-schools"],
+    enabled: !!admin,
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/admin/schools`, { headers: authHeaders() });
+      if (!res.ok) return [] as AdminSchool[];
+      const json = (await res.json()) as { data: AdminSchool[] };
+      return json.data;
+    },
+  });
+
+  const { data: inquiries } = useQuery({
+    queryKey: ["admin-overview-inquiries"],
+    enabled: !!admin,
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/inquiries`, { headers: authHeaders() });
+      if (!res.ok) return [] as AdminInquiry[];
+      const json = (await res.json()) as { data: AdminInquiry[] };
+      return json.data;
+    },
+  });
+
+  const totalSchools = schools?.length ?? 0;
+  const pendingApprovals = schools?.filter((s) => s.status === "pending").length ?? 0;
+  const today = new Date().toDateString();
+  const inquiriesToday =
+    inquiries?.filter((i) => new Date(i.createdAt).toDateString() === today).length ?? 0;
+
+  const stats = [
+    { label: "Total Schools", value: totalSchools },
+    { label: "Pending Approvals", value: pendingApprovals },
+    { label: "Inquiries Today", value: inquiriesToday },
+  ];
+
   return (
     <div className="container-shell py-10">
       {/* Header */}
@@ -69,18 +111,17 @@ export default function AdminPage() {
           </p>
         </div>
 
-        {/* Logged-in admin pill */}
         {admin && (
           <div className="flex items-center gap-3 rounded-xl border border-[#D3D1C7] bg-white px-4 py-2.5 shadow-sm">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FCE8E8] text-[#A32D2D]">
-              <Shield size={18} />
+              <MdShield size={18} />
             </div>
             <div className="text-sm">
               <p className="font-semibold text-[#042C53]">
                 {admin.name ?? "SchoolSetu Admin"}
               </p>
               <p className="flex items-center gap-1 text-xs text-[#55534e]">
-                <User size={11} />
+                <FiUser size={11} />
                 {formatPhone(admin.phone) || admin.id}
               </p>
             </div>
@@ -88,15 +129,23 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Stats */}
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        {stats.map((stat) => (
+          <Card key={stat.label}>
+            <p className="text-xs uppercase tracking-wide text-[#888780]">{stat.label}</p>
+            <p className="mt-2 font-heading text-3xl font-bold text-[#0C447C]">{stat.value}</p>
+          </Card>
+        ))}
+      </div>
+
       {/* Tile grid */}
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <h2 className="mt-10 font-heading text-xl font-bold text-[#0C447C]">Sections</h2>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
         {adminRoutes.map((route) => (
-          <Card key={route}>
-            <Link
-              href={`/admin/${route}`}
-              className="font-semibold capitalize text-[#185FA5]"
-            >
-              {route.replace("-", " ")}
+          <Card key={route.slug}>
+            <Link href={`/admin/${route.slug}`} className="font-semibold text-[#185FA5]">
+              {route.label}
             </Link>
           </Card>
         ))}

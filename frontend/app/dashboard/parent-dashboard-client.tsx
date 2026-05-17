@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { Bookmark, Loader2, LogOut, MessageSquare, User } from "lucide-react";
+import { FiBookmark, FiLoader, FiLogOut, FiMessageSquare, FiUser } from "react-icons/fi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { useCompareStore } from "@/store/compare-store";
 
 type InquiryRecord = {
   id: string;
-  status: "new" | "contacted" | "interested" | "converted" | "closed" | "admitted" | "rejected";
+  status: "new" | "contacted" | "interested" | "converted" | "closed";
   studentName: string;
   classApplying: string;
   message?: string | null;
@@ -25,14 +25,15 @@ type InquiryRecord = {
 
 type JwtPayload = { id: string; role: string; phone?: string; name?: string };
 
-const STATUS_TONE: Record<InquiryRecord["status"], "success" | "amber" | "blue" | "danger" | "neutral"> = {
+const STATUS_TONE: Record<
+  InquiryRecord["status"],
+  "success" | "amber" | "blue" | "danger" | "neutral"
+> = {
   new: "blue",
   contacted: "amber",
   interested: "amber",
   converted: "success",
-  admitted: "success",
   closed: "neutral",
-  rejected: "danger",
 };
 
 function decodeJwt(token: string): JwtPayload | null {
@@ -114,13 +115,13 @@ export function ParentDashboardClient() {
           </h1>
           {phone && (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-[#55534e]">
-              <User size={14} className="text-[#888780]" />
+              <FiUser size={14} className="text-[#888780]" />
               {formatPhone(phone)}
             </p>
           )}
         </div>
         <Button onClick={handleLogout} variant="outline" className="self-start">
-          <LogOut size={16} />
+          <FiLogOut size={16} />
           Logout
         </Button>
       </div>
@@ -129,7 +130,7 @@ export function ParentDashboardClient() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <Card className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E6F1FB] text-[#185FA5]">
-            <Bookmark size={20} />
+            <FiBookmark size={20} />
           </div>
           <div>
             <p className="text-xs text-[#888780]">Shortlisted</p>
@@ -138,7 +139,7 @@ export function ParentDashboardClient() {
         </Card>
         <Card className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FAEEDA] text-[#EF9F27]">
-            <MessageSquare size={20} />
+            <FiMessageSquare size={20} />
           </div>
           <div>
             <p className="text-xs text-[#888780]">My Inquiries</p>
@@ -149,7 +150,7 @@ export function ParentDashboardClient() {
         </Card>
         <Card className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EAF3DE] text-[#3B6D11]">
-            <User size={20} />
+            <FiUser size={20} />
           </div>
           <div>
             <p className="text-xs text-[#888780]">Quick Actions</p>
@@ -175,7 +176,7 @@ export function ParentDashboardClient() {
 
         {selectedIds.length === 0 ? (
           <Card className="mt-4 text-center">
-            <Bookmark size={28} className="mx-auto text-[#D3D1C7]" />
+            <FiBookmark size={28} className="mx-auto text-[#D3D1C7]" />
             <p className="mt-3 font-semibold text-[#2C2C2A]">No shortlisted schools yet</p>
             <p className="mt-1 text-sm text-[#888780]">
               Add schools to your shortlist to compare them side-by-side.
@@ -200,7 +201,7 @@ export function ParentDashboardClient() {
 
         {inquiriesQuery.isLoading && (
           <div className="mt-4 flex items-center gap-2 text-sm text-[#888780]">
-            <Loader2 className="animate-spin" size={16} />
+            <FiLoader className="animate-spin" size={16} />
             Loading inquiries…
           </div>
         )}
@@ -213,7 +214,7 @@ export function ParentDashboardClient() {
 
         {!inquiriesQuery.isLoading && inquiries.length === 0 && !inquiriesQuery.isError && (
           <Card className="mt-4 text-center">
-            <MessageSquare size={28} className="mx-auto text-[#D3D1C7]" />
+            <FiMessageSquare size={28} className="mx-auto text-[#D3D1C7]" />
             <p className="mt-3 font-semibold text-[#2C2C2A]">No inquiries yet</p>
             <p className="mt-1 text-sm text-[#888780]">
               Find a school and click &ldquo;Send Inquiry&rdquo; to start a conversation.

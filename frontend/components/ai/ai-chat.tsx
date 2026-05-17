@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertCircle, Bot, Loader2, Send, Sparkles, UserRound } from "lucide-react";
+import { FiLoader, FiSend, FiUser } from "react-icons/fi";
+import { MdAutoAwesome, MdErrorOutline, MdSmartToy } from "react-icons/md";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,7 @@ export function AiChat() {
             animate={{ opacity: 1, y: 0 }}
             className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            {message.role === "assistant" ? <Bot className="mt-2 shrink-0 text-[#185FA5]" size={20} /> : null}
+            {message.role === "assistant" ? <MdSmartToy className="mt-2 shrink-0 text-[#185FA5]" size={20} /> : null}
             <div className={`max-w-[88%] ${message.role === "user" ? "text-right" : ""}`}>
               <p
                 className={`inline-block rounded-[12px] px-4 py-3 text-sm leading-6 ${
@@ -180,13 +181,13 @@ export function AiChat() {
                 </div>
               ) : null}
             </div>
-            {message.role === "user" ? <UserRound className="mt-2 shrink-0 text-[#888780]" size={20} /> : null}
+            {message.role === "user" ? <FiUser className="mt-2 shrink-0 text-[#888780]" size={20} /> : null}
           </motion.div>
         ))}
 
         {isLoading ? (
           <div className="flex items-center gap-3">
-            <Bot className="text-[#185FA5]" size={20} />
+            <MdSmartToy className="text-[#185FA5]" size={20} />
             <div className="inline-flex items-center gap-2 rounded-[12px] bg-white px-4 py-3 text-sm text-[#55534e]">
               <span className="h-2 w-2 animate-bounce rounded-full bg-[#185FA5]" />
               <span className="h-2 w-2 animate-bounce rounded-full bg-[#185FA5] [animation-delay:120ms]" />
@@ -198,7 +199,7 @@ export function AiChat() {
 
         {error ? (
           <div className="flex items-center gap-2 rounded-[12px] border border-[#F4B7B7] bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]">
-            <AlertCircle size={17} />
+            <MdErrorOutline size={17} />
             {error}
           </div>
         ) : null}
@@ -206,7 +207,7 @@ export function AiChat() {
 
       <form onSubmit={sendMessage} className="flex gap-2 border-t border-[#D3D1C7] bg-white p-4">
         <div className="relative min-w-0 flex-1">
-          <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-[#185FA5]" size={18} />
+          <MdAutoAwesome className="absolute left-3 top-1/2 -translate-y-1/2 text-[#185FA5]" size={18} />
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -216,7 +217,7 @@ export function AiChat() {
           />
         </div>
         <Button type="submit" variant="amber" aria-label="Send preferences" disabled={isLoading || !input.trim()}>
-          {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+          {isLoading ? <FiLoader className="animate-spin" size={18} /> : <FiSend size={18} />}
         </Button>
       </form>
     </Card>

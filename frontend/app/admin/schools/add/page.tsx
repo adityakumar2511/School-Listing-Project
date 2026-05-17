@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { FiLoader } from "react-icons/fi";
+import { MdCheckCircle } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/schools-api";
 import { authHeaders, getAuthToken } from "@/lib/auth-token";
@@ -126,7 +127,7 @@ export default function AdminAddSchoolPage() {
       <div className="mt-8 max-w-xl">
         {success ? (
           <div className="flex items-center gap-3 rounded-xl border border-[#C0DD97] bg-[#EAF3DE] px-5 py-4">
-            <span className="text-xl">✓</span>
+            <MdCheckCircle className="shrink-0 text-2xl text-[#3B6D11]" aria-hidden />
             <p className="font-semibold text-[#3B6D11]">School created successfully! Redirecting…</p>
           </div>
         ) : (
@@ -210,7 +211,7 @@ export default function AdminAddSchoolPage() {
 
             <div className="flex items-center gap-3 pt-2">
               <Button type="submit" disabled={loading} className="min-w-[140px]">
-                {loading ? <Loader2 className="animate-spin" size={16} /> : null}
+                {loading ? <FiLoader className="animate-spin" size={16} /> : null}
                 {loading ? "Creating…" : "Create School"}
               </Button>
               <Link href="/admin">

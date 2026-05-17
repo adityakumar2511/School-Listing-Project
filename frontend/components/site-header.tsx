@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { GraduationCap, LogOut, Menu, MessageCircle, User, X } from "lucide-react";
+import { FiLogOut, FiMessageCircle, FiUser, FiX } from "react-icons/fi";
+import { MdMenu, MdSchool } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { clearAuthToken, getAuthToken } from "@/lib/auth-token";
 
@@ -85,7 +86,7 @@ export function SiteHeader() {
           className="flex items-center gap-2 font-heading text-xl font-bold text-[#0C447C]"
         >
           <span className="grid h-10 w-10 place-items-center rounded-[8px] bg-[#E6F1FB] text-[#185FA5]">
-            <GraduationCap size={24} />
+            <MdSchool size={24} />
           </span>
           SchoolSetu
         </Link>
@@ -123,7 +124,7 @@ export function SiteHeader() {
               )}
               {/* User pill */}
               <div className="flex items-center gap-1.5 rounded-full border border-[#D3D1C7] bg-[#F1EFE8] px-3 py-1.5">
-                <User size={14} className="text-[#55534e]" />
+                <FiUser size={14} className="text-[#55534e]" />
                 <span className="max-w-[120px] truncate text-xs font-medium text-[#2C2C2A]">
                   {displayName}
                 </span>
@@ -134,14 +135,14 @@ export function SiteHeader() {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D3D1C7] text-[#55534e] transition hover:border-[#A32D2D] hover:text-[#A32D2D]"
                 title="Sign out"
               >
-                <LogOut size={15} />
+                <FiLogOut size={15} />
               </button>
             </div>
           ) : (
             /* Logged-out state */
             <Button asChild variant="amber" className="hidden sm:inline-flex">
               <Link href="/auth/parent/login">
-                <MessageCircle size={17} />
+                <FiMessageCircle size={17} />
                 Login
               </Link>
             </Button>
@@ -155,7 +156,7 @@ export function SiteHeader() {
             aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMenuOpen}
           >
-            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {isMenuOpen ? <FiX size={20} /> : <MdMenu size={20} />}
           </button>
         </div>
       </div>
@@ -207,7 +208,7 @@ export function SiteHeader() {
                   onClick={() => { setIsMenuOpen(false); handleLogout(); }}
                   className="mx-6 mb-3 mt-1 flex items-center justify-center gap-2 rounded-lg border border-[#D3D1C7] px-4 py-2.5 text-sm font-semibold text-[#A32D2D] transition hover:border-[#A32D2D] hover:bg-[#FCE8E8]"
                 >
-                  <LogOut size={15} />
+                  <FiLogOut size={15} />
                   Sign Out
                 </button>
               </>

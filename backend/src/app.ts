@@ -10,7 +10,7 @@ export function createApp() {
   app.use(helmetMiddleware);
   app.use(corsMiddleware);
   app.use(apiRateLimit);
-  app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "12mb" }));
   app.use(morgan("dev"));
 
   app.use("/api", apiRouter);

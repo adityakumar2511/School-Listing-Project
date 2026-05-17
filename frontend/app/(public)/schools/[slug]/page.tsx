@@ -1,62 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { FiCheck, FiMapPin, FiMessageCircle, FiPhone, FiSend } from "react-icons/fi";
+import type { SchoolProfile } from "./school-profile-model";
+import { SchoolDetailTabs } from "@/components/schools/school-detail-tabs";
 import { SchoolInquiryCta } from "@/components/schools/school-inquiry-cta";
 import { MobileStickyBar } from "@/components/schools/mobile-sticky-bar";
 import { Badge } from "@/components/ui/badge";
 import { mockSchools, TARGET_CITIES } from "@/data/schools";
-import { fetchSchoolBySlug, normalizeSchool, type NormalizedSchool } from "@/lib/schools-api";
+import {
+  fetchSchoolDetailBySlug,
+  fetchSchoolsList,
+  normalizeSchool,
+  type NormalizedSchool,
+} from "@/lib/schools-api";
 import { formatCurrency } from "@/lib/utils";
 import { SchoolsListingClient } from "../schools-listing-client";
+
+export const revalidate = 3600;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DetailProps = { params: Promise<{ slug: string }> };
-
-type SchoolProfile = Omit<NormalizedSchool, "medium"> & {
-  area: string;
-  pincode: string;
-  classesFrom: string;
-  classesTo: string;
-  schoolType: string;
-  gender: string;
-  medium: string[];
-  admissionClasses: string[];
-  specialFocus: string[];
-  isVerified: boolean;
-  coverImage?: string;
-  tagline?: string;
-  principalName?: string;
-  facilityMap: Record<string, boolean>;
-  galleryImages: string[];
-  boardsOffered: string[];
-};
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const FACILITY_DEFS: { key: string; label: string; icon: string }[] = [
-  { key: "hostel", label: "Hostel", icon: "🏠" },
-  { key: "transport", label: "Transport", icon: "🚌" },
-  { key: "library", label: "Library", icon: "📚" },
-  { key: "labs", label: "Science Labs", icon: "🔬" },
-  { key: "smartClassroom", label: "Smart Classroom", icon: "🖥️" },
-  { key: "wifi", label: "WiFi Campus", icon: "📶" },
-  { key: "cctv", label: "CCTV Security", icon: "📹" },
-  { key: "sportsGround", label: "Sports Ground", icon: "⚽" },
-  { key: "swimmingPool", label: "Swimming Pool", icon: "🏊" },
-  { key: "auditorium", label: "Auditorium", icon: "🎭" },
-  { key: "cafeteria", label: "Cafeteria", icon: "🍽️" },
-  { key: "medicalRoom", label: "Medical Room", icon: "🏥" },
-];
-
-const FOCUS_DESCRIPTIONS: Record<string, string> = {
-  "IIT/NEET": "Integrated IIT/NEET preparation with daily practice tests and doubt sessions.",
-  Sports: "State-level coaching and inter-school sports competitions.",
-  Scholarship: "Merit-based scholarships for academically outstanding students.",
-  Minority: "Special academic programs catering to minority community students.",
-  Robotics: "Robotics and coding curriculum integrated from primary grades.",
-  Arts: "Performing and visual arts programs with dedicated studio facilities.",
-};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -68,11 +34,26 @@ function isCitySlug(slug: string) {
   return TARGET_CITIES.find((city) => city.slug === slug || slugify(city.name) === slug);
 }
 
+function readIsoDate(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return value;
+  return null;
+}
+
 function toSchoolProfile(raw: unknown): SchoolProfile {
   const base = normalizeSchool(raw);
   const school = raw as Record<string, unknown>;
   const details = (school.details ?? {}) as Record<string, unknown>;
   const gallery = Array.isArray(school.gallery) ? school.gallery : [];
+  const addressRaw =
+    typeof school.address === "object" && school.address && !Array.isArray(school.address)
+      ? (school.address as Record<string, unknown>)
+      : {};
+  const academicsRecord =
+    school.academics && typeof school.academics === "object" && !Array.isArray(school.academics)
+      ? (school.academics as Record<string, unknown>)
+      : {};
 
   // Build facility map from raw SchoolFacilities object, or fall back to string array
   const facilityMap: Record<string, boolean> = {};
@@ -86,14 +67,34 @@ function toSchoolProfile(raw: unknown): SchoolProfile {
     });
   }
 
-  // Omit medium from base to override with string[]
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { medium: _m, ...baseRest } = base;
+
+  const contentSections = Array.isArray(school.sections)
+    ? (school.sections as Record<string, unknown>[]).map((s) => ({
+        title: String(s.title ?? ""),
+        content: String(s.content ?? ""),
+        sectionType: String(s.sectionType ?? ""),
+      }))
+    : [];
+
+  const achievements = Array.isArray(school.achievements)
+    ? (school.achievements as Record<string, unknown>[]).map((a) => ({
+        title: String(a.title ?? ""),
+        year: typeof a.year === "number" ? a.year : undefined,
+        description: typeof a.description === "string" ? a.description : undefined,
+      }))
+    : [];
 
   return {
     ...baseRest,
     area: typeof school.area === "string" ? school.area : base.city,
-    pincode: typeof school.pincode === "string" ? school.pincode : "",
+    pincode:
+      typeof school.pincode === "string"
+        ? school.pincode
+        : typeof addressRaw.pincode === "string"
+          ? addressRaw.pincode
+          : "",
     classesFrom:
       typeof school.classesFrom === "string" ? school.classesFrom : (base.classes.split(" - ")[0] ?? ""),
     classesTo:
@@ -122,12 +123,24 @@ function toSchoolProfile(raw: unknown): SchoolProfile {
         ? gallery.map((item) => String((item as { cloudinaryUrl: string }).cloudinaryUrl))
         : [base.image],
     boardsOffered: [base.board],
+    streams: Array.isArray(academicsRecord.streams)
+      ? (academicsRecord.streams as unknown[]).map(String)
+      : [],
+    documentsRequired: Array.isArray(academicsRecord.documentsRequired)
+      ? (academicsRecord.documentsRequired as unknown[]).map(String)
+      : [],
+    ageCriteria:
+      typeof academicsRecord.ageCriteria === "string" ? academicsRecord.ageCriteria : undefined,
+    admissionStart: readIsoDate(academicsRecord.admissionStart),
+    admissionEnd: readIsoDate(academicsRecord.admissionEnd),
+    contentSections,
+    achievements,
   };
 }
 
 async function getSchoolBySlug(slug: string): Promise<SchoolProfile | null> {
-  const fromApi = await fetchSchoolBySlug(slug);
-  if (fromApi) return toSchoolProfile(fromApi);
+  const rawDetail = await fetchSchoolDetailBySlug(slug);
+  if (rawDetail) return toSchoolProfile(rawDetail);
 
   const school = mockSchools.find((item) => item.slug === slug);
   return school ? toSchoolProfile(school) : null;
@@ -192,8 +205,8 @@ function JsonLd({ school }: { school: SchoolProfile }) {
           address: {
             "@type": "PostalAddress",
             streetAddress: school.address,
-            addressLocality: "Prayagraj",
-            addressRegion: "Uttar Pradesh",
+            addressLocality: school.city,
+            addressRegion: school.state,
             postalCode: school.pincode,
             addressCountry: "IN",
           },
@@ -204,26 +217,6 @@ function JsonLd({ school }: { school: SchoolProfile }) {
         }),
       }}
     />
-  );
-}
-
-function NearbySchoolCard({ school }: { school: NormalizedSchool }) {
-  return (
-    <Link
-      href={`/schools/${school.slug}`}
-      className="flex items-center gap-3 rounded-xl border border-[#D3D1C7] bg-white p-4 transition-all hover:border-[#185FA5] hover:shadow-sm"
-    >
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#E6F1FB] text-sm font-bold text-[#185FA5]">
-        {school.name[0]}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-[#0C447C]">{school.name}</p>
-        <p className="text-xs text-[#888780]">
-          {school.board}
-          {school.monthlyFee > 0 ? ` • ${formatCurrency(school.monthlyFee)}/mo` : ""}
-        </p>
-      </div>
-    </Link>
   );
 }
 
@@ -312,7 +305,13 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
         </div>
 
         <div className="container-shell py-10">
-          <SchoolsListingClient defaultCitySlug={city.slug} />
+          <Suspense
+            fallback={
+              <div className="h-96 animate-pulse rounded-[12px] border border-[#D3D1C7] bg-white" />
+            }
+          >
+            <SchoolsListingClient defaultCitySlug={city.slug} />
+          </Suspense>
         </div>
       </>
     );
@@ -323,11 +322,11 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
   const school = await getSchoolBySlug(slug);
   if (!school) notFound();
 
-  const nearbySchools = mockSchools
-    .filter((s) => s.citySlug === school.citySlug && s.slug !== slug)
-    .sort((a, b) => (a.board === school.board ? -1 : b.board === school.board ? 1 : 0))
-    .slice(0, 3)
-    .map(normalizeSchool);
+  const cityParam = school.cityId ?? school.citySlug;
+  const nearbyListRes = cityParam
+    ? await fetchSchoolsList({ city: cityParam, limit: 6, page: 1 })
+    : ({ data: [] as NormalizedSchool[] } satisfies { data: NormalizedSchool[] });
+  const nearbySchools = nearbyListRes.data.filter((s) => s.slug !== slug).slice(0, 3);
 
   const feeRows = (
     [
@@ -368,7 +367,9 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
                 <span>›</span>
                 <Link href="/schools" className="hover:text-[#185FA5]">Schools</Link>
                 <span>›</span>
-                <Link href="/schools/prayagraj" className="hover:text-[#185FA5]">Prayagraj</Link>
+                <Link href={`/schools/${school.citySlug}`} className="hover:text-[#185FA5]">
+                  {school.city}
+                </Link>
                 <span>›</span>
                 <span className="font-medium text-[#2C2C2A]">{school.name}</span>
               </nav>
@@ -381,13 +382,18 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Badge tone="blue">{school.board}</Badge>
                     <Badge tone="amber">{school.gender}</Badge>
-                    {school.isVerified && <Badge tone="success">✓ Verified</Badge>}
+                    {school.isVerified && (
+                      <Badge tone="success">
+                        <FiCheck size={12} className="mr-1 inline" /> Verified
+                      </Badge>
+                    )}
                   </div>
                   <h1 className="font-heading text-2xl font-bold leading-tight text-[#2C2C2A]">
                     {school.name}
                   </h1>
-                  <p className="mt-1 text-sm text-[#888780]">
-                    📍 {school.area}, Prayagraj — {school.classesFrom} to {school.classesTo}
+                  <p className="mt-1 flex items-center gap-1 text-sm text-[#888780]">
+                    <FiMapPin size={13} />
+                    {school.area}, {school.city} — {school.classesFrom} to {school.classesTo}
                   </p>
                 </div>
               </div>
@@ -421,7 +427,7 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
                   href={`tel:${school.phone}`}
                   className="inline-flex items-center gap-2 rounded-lg border border-[#D3D1C7] px-5 py-2.5 text-sm font-semibold text-[#2C2C2A] transition-colors hover:border-[#185FA5] hover:text-[#185FA5]"
                 >
-                  📞 Call School
+                  <FiPhone size={15} /> Call School
                 </a>
               )}
               {whatsappDigits && (
@@ -431,147 +437,26 @@ export default async function SchoolOrCityPage({ params }: DetailProps) {
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg border border-[#3B6D11] bg-[#EAF3DE] px-5 py-2.5 text-sm font-semibold text-[#3B6D11] transition-colors hover:bg-[#d4ebbb]"
                 >
-                  💬 WhatsApp
+                  <FiMessageCircle size={15} /> WhatsApp
                 </a>
               )}
               <a
                 href="#inquiry"
                 className="inline-flex items-center gap-2 rounded-lg bg-[#EF9F27] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#d98e1e]"
               >
-                📝 Send Inquiry
+                <FiSend size={15} /> Send Inquiry
               </a>
             </div>
 
-            {/* Block 4 — About */}
             <div className="rounded-xl border border-[#D3D1C7] bg-white p-6">
-              <h2 className="font-heading text-xl font-bold text-[#0C447C]">About the School</h2>
-              <p className="mt-3 leading-7 text-[#55534e]">{school.description}</p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs text-[#888780]">Principal</p>
-                  <p className="mt-0.5 font-semibold text-[#2C2C2A]">
-                    {school.principalName ?? "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#888780]">Established</p>
-                  <p className="mt-0.5 font-semibold text-[#2C2C2A]">
-                    {school.establishedYear ?? "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#888780]">Affiliation No.</p>
-                  <p className="mt-0.5 font-semibold text-[#2C2C2A]">
-                    {school.affiliationNo || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#888780]">Address</p>
-                  <p className="mt-0.5 text-sm font-semibold text-[#2C2C2A]">{school.address}</p>
-                </div>
-              </div>
+              <SchoolDetailTabs
+                school={school}
+                slug={slug}
+                feeRows={feeRows}
+                nearbySchools={nearbySchools}
+              />
             </div>
 
-            {/* Block 5 — Fee Structure */}
-            {feeRows.length > 0 && (
-              <div className="rounded-xl border border-[#D3D1C7] bg-white p-6">
-                <h2 className="font-heading text-xl font-bold text-[#0C447C]">Fee Structure 2025-26</h2>
-                <div className="mt-4 overflow-hidden rounded-xl border border-[#D3D1C7]">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#185FA5] text-white">
-                        <th className="px-4 py-3 text-left text-sm font-semibold">Fee Type</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {feeRows.map((row, i) => (
-                        <tr key={row.label} className={i % 2 === 1 ? "bg-[#F1EFE8]" : "bg-white"}>
-                          <td className="px-4 py-3 text-sm text-[#55534e]">{row.label}</td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold text-[#2C2C2A]">
-                            {row.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-3 text-xs text-[#888780]">
-                  * Fees shown are approximate. Please confirm with the school.
-                </p>
-              </div>
-            )}
-
-            {/* Block 6 — Facilities (only available ones) */}
-            <div className="rounded-xl border border-[#D3D1C7] bg-white p-6">
-              <h2 className="font-heading text-xl font-bold text-[#0C447C]">Facilities</h2>
-              {(() => {
-                const available = FACILITY_DEFS.filter((def) => Boolean(school.facilityMap[def.key]));
-                return available.length === 0 ? (
-                  <p className="mt-4 text-sm text-[#888780]">Facility details coming soon</p>
-                ) : (
-                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {available.map((def) => (
-                      <div
-                        key={def.key}
-                        className="flex items-center gap-3 rounded-lg border border-[#C0DD97] bg-[#EAF3DE] px-3 py-3 text-sm font-medium text-[#3B6D11]"
-                      >
-                        <span>{def.icon}</span>
-                        <span>{def.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Block 7 — Special Programs */}
-            {school.specialFocus.length > 0 && (
-              <div className="rounded-xl border border-[#D3D1C7] bg-white p-6">
-                <h2 className="font-heading text-xl font-bold text-[#0C447C]">Special Programs</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {school.specialFocus.map((focus) => (
-                    <Badge key={focus} tone="blue">
-                      {focus}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="mt-4 space-y-3">
-                  {school.specialFocus.map((focus) => {
-                    const desc = FOCUS_DESCRIPTIONS[focus];
-                    if (!desc) return null;
-                    return (
-                      <div key={focus} className="rounded-lg bg-[#E6F1FB] px-4 py-3">
-                        <p className="text-sm font-semibold text-[#0C447C]">{focus}</p>
-                        <p className="mt-0.5 text-sm text-[#55534e]">{desc}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Block 8 — Nearby Schools */}
-            {nearbySchools.length > 0 && (
-              <div className="rounded-xl border border-[#D3D1C7] bg-white p-6">
-                <h2 className="font-heading text-xl font-bold text-[#0C447C]">
-                  More Schools in Prayagraj
-                </h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {nearbySchools.map((nearby) => (
-                    <NearbySchoolCard key={nearby.id} school={nearby} />
-                  ))}
-                </div>
-                <div className="mt-4 text-center">
-                  <Link
-                    href="/schools/prayagraj"
-                    className="text-sm font-semibold text-[#185FA5] hover:underline"
-                  >
-                    View all schools in Prayagraj →
-                  </Link>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── Sidebar ──────────────────────────────────────────────────── */}
